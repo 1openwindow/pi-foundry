@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/AgentManifest.yaml
+name: pi-foundry
+displayName: "pi Foundry Hosted Agent"
+description: >
+  Hosted Agent container that exposes the Foundry Invocations protocol shape and
+  delegates requests to pi over RPC.
+metadata:
+  tags:
+    - AI Agent Hosting
+    - Invocations Protocol
+    - Bring Your Own
+    - pi
+template:
+  name: pi-foundry
+  kind: hosted
+  protocols:
+    - protocol: invocations
+      version: 1.0.0
+  image: "{{CONTAINER_IMAGE}}"
+  environment_variables:
+    - name: PI_ARGS
+      value: "{{PI_ARGS}}"
+    - name: REQUEST_TIMEOUT_MS
+      value: "{{REQUEST_TIMEOUT_MS}}"
+    - name: ENABLE_DIAGNOSTICS
+      value: "{{ENABLE_DIAGNOSTICS}}"
+    - name: PI_MOCK
+      value: "{{PI_MOCK}}"
+    - name: PI_OPENAI_API_KEY
+      value: "{{PI_OPENAI_API_KEY}}"
+    - name: PI_OPENAI_BASE_URL
+      value: "{{PI_OPENAI_BASE_URL}}"
+    - name: PI_OPENAI_MODEL
+      value: "{{PI_OPENAI_MODEL}}"

@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.azure/
+
+# Runtime state
+.files/
+.pi-foundry/
+*.log
+
+# Coding-agent local metadata
+.agents/
+skills-lock.json
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build/output
+dist/
+build/
+coverage/

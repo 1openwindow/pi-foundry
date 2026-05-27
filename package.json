@@ -1,0 +1,19 @@
+{
+  "name": "pi-foundry",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:curl": "scripts/curl-smoke.sh",
+    "smoke:session": "node scripts/session-smoke.mjs",
+    "smoke:sse": "scripts/sse-smoke.sh",
+    "docker:build": "scripts/docker-build-local.sh",
+    "docker:smoke:mock": "scripts/docker-smoke-mock.sh",
+    "docker:smoke:real": "scripts/docker-smoke-real-host-auth.sh"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

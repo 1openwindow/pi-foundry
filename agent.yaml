@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
+kind: hosted
+name: pi-foundry
+protocols:
+  - protocol: invocations
+    version: 1.0.0
+image: zihchpifoundry.azurecr.io/pi-foundry:latest
+resources:
+  cpu: "1"
+  memory: 2Gi
+environment_variables:
+  - name: PI_ARGS
+    value: ${PI_ARGS}
+  - name: REQUEST_TIMEOUT_MS
+    value: ${REQUEST_TIMEOUT_MS}
+  - name: ENABLE_DIAGNOSTICS
+    value: ${ENABLE_DIAGNOSTICS}
+  - name: PI_MOCK
+    value: ${PI_MOCK}
+  - name: PI_OPENAI_API_KEY
+    value: ${PI_OPENAI_API_KEY}
+  - name: PI_OPENAI_BASE_URL
+    value: ${PI_OPENAI_BASE_URL}
+  - name: PI_OPENAI_MODEL
+    value: ${PI_OPENAI_MODEL}
