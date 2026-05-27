@@ -13,7 +13,9 @@ node_modules/
 *.log
 
 # Coding-agent local metadata
-.agents/
+.agents/*
+!.agents/skills/
+!.agents/skills/**
 skills-lock.json
 
 # OS/editor

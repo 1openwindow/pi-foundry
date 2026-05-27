@@ -3,3 +3,8 @@ npm-debug.log
 .DS_Store
 .git
 .env
+.env.*
+.azure
+.files
+.pi-foundry
+skills-lock.json
