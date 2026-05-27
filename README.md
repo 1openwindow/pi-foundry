@@ -5,7 +5,9 @@ Minimal local wrapper for running pi behind an HTTP endpoint that can later be a
 Current shape:
 
 - `GET /health`
+- `GET /readiness`
 - `GET /invocations/docs/openapi.json`
+- `GET /artifacts/<path>`
 - `POST /invocations`
 - Supports Foundry-style `agent_session_id` query parameter
 - Supports JSON responses and SSE (`Accept: text/event-stream` or `?stream=true`)
@@ -18,7 +20,7 @@ Current shape:
 | Variable | Default | Purpose |
 |---|---|---|
 | `WORKSPACE_DIR` | current working directory; Docker sets `/workspace` | pi working directory |
-| `FILES_DIR` | `$WORKSPACE_DIR/.files`; Docker sets `/files` | target for Foundry-style uploaded files |
+| `FILES_DIR` | `$WORKSPACE_DIR/.files`; Docker sets `/files` | generated artifact root served by `/artifacts/<path>` |
 | `STATE_DIR` | `$HOME/.pi-foundry` | wrapper state root |
 | `SESSIONS_DIR` | `$STATE_DIR/sessions` | per-`sessionId` pi session storage root |
 | `PI_CODING_AGENT_DIR` | `$HOME/.pi/agent`; Docker sets `$STATE_DIR/pi-agent` | pi config/cache/session root |
@@ -101,6 +103,16 @@ OpenAPI:
 ```bash
 curl --noproxy '*' -sS http://127.0.0.1:8080/invocations/docs/openapi.json | jq
 ```
+
+Artifact serving from `FILES_DIR`:
+
+```bash
+mkdir -p .files/demo
+printf '<h1>ok</h1>' > .files/demo/index.html
+curl --noproxy '*' -sS http://127.0.0.1:8080/artifacts/demo/index.html
+```
+
+Artifact paths are constrained to `FILES_DIR`; path traversal outside that directory is rejected.
 
 ## Docker
 
@@ -198,4 +210,4 @@ Next steps before Azure deployment:
 
 - validate this Node container with `azd ai agent run` if the tool accepts a non-Python container
 - otherwise wrap this Node service with the official Python `azure-ai-agentserver-invocations` host, or port the gateway to Python
-- add `/files` handling if the deployment scenario depends on uploaded files
+- add upload/workspace ingestion if the deployment scenario depends on user-uploaded files

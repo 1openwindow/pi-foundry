@@ -67,6 +67,14 @@ Important environment values:
 azd env get-values | sort | rg 'AZURE_|FOUNDRY_PROJECT_ENDPOINT|PI_|ENABLE_DIAGNOSTICS|AGENT_PI_FOUNDRY_VERSION'
 ```
 
+Generated files under `FILES_DIR` are served by:
+
+```text
+/artifacts/<relative-path-under-FILES_DIR>
+```
+
+For example, `/files/coding-agent-comparison/index.html` is served at `/artifacts/coding-agent-comparison/index.html` if the Hosted Agent front door exposes non-invocation routes.
+
 Expected real-model values:
 
 ```bash
@@ -179,6 +187,22 @@ Expected output includes:
   "output": "ok",
   "mock": false
 }
+```
+
+## Verify remote artifacts locally before deploy
+
+With a local server running:
+
+```bash
+mkdir -p .files/coding-agent-comparison
+printf '<h1>artifact ok</h1>' > .files/coding-agent-comparison/index.html
+curl --noproxy '*' -sS http://127.0.0.1:8080/artifacts/coding-agent-comparison/index.html
+```
+
+Expected output:
+
+```html
+<h1>artifact ok</h1>
 ```
 
 ## Verify remote session continuity

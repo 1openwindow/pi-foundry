@@ -60,6 +60,7 @@ Implemented endpoints:
 - `GET /health`
 - `GET /readiness`
 - `GET /invocations/docs/openapi.json`
+- `GET /artifacts/<path>`
 - `POST /invocations`
 
 Invocation features:
@@ -100,7 +101,7 @@ Verified remotely:
 | Variable | Purpose |
 |---|---|
 | `WORKSPACE_DIR` | pi working directory; Docker defaults to `/workspace` |
-| `FILES_DIR` | Foundry-style files directory; Docker defaults to `/files` |
+| `FILES_DIR` | generated artifact root served by `/artifacts/<path>`; Docker defaults to `/files` |
 | `STATE_DIR` | wrapper state root; Docker defaults to `/home/node/.pi-foundry` |
 | `SESSIONS_DIR` | per-session pi storage root |
 | `PI_CODING_AGENT_DIR` | pi config/cache/models root |
@@ -269,7 +270,7 @@ This is not a blocker; remote real invocation works.
 
 1. `/diagnostics` is now disabled by default. Set `ENABLE_DIAGNOSTICS=1` to enable it temporarily.
 2. `PI_OPENAI_API_KEY` is stored in local azd env. User said Key Vault is not needed yet.
-3. No `/files` upload/download integration beyond having `FILES_DIR`.
+3. `/artifacts/<path>` can serve generated files from `FILES_DIR`; upload/workspace ingestion is still not implemented.
 4. No concurrency limits yet.
 5. No explicit output truncation in the HTTP wrapper, though pi tools already truncate their own tool output.
 6. Multiple old remote versions exist. Use version 12 unless newer versions are validated.

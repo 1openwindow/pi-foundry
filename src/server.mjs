@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { resolve, sep } from "node:path";
+import { extname, resolve, sep } from "node:path";
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -46,6 +47,40 @@ function sendJson(res, statusCode, payload) {
     "content-length": Buffer.byteLength(body),
   });
   res.end(body);
+}
+
+function contentTypeForPath(path) {
+  switch (extname(path).toLowerCase()) {
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".js":
+    case ".mjs":
+      return "text/javascript; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".md":
+    case ".txt":
+      return "text/plain; charset=utf-8";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".wav":
+      return "audio/wav";
+    case ".vtt":
+      return "text/vtt; charset=utf-8";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".svg":
+      return "image/svg+xml; charset=utf-8";
+    case ".zip":
+      return "application/zip";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 function readBodyText(req) {
@@ -130,6 +165,53 @@ function resolveInvocationCwd(value) {
     throw new HttpError(400, `cwd must stay within WORKSPACE_DIR (${workspaceDir})`);
   }
   return requested;
+}
+
+function resolveArtifactPath(urlPathname) {
+  const encodedRelativePath = urlPathname.slice("/artifacts/".length);
+  if (encodedRelativePath.length === 0) throw new HttpError(400, "artifact path is required");
+
+  let relativePath;
+  try {
+    relativePath = decodeURIComponent(encodedRelativePath);
+  } catch (error) {
+    throw new HttpError(400, `invalid artifact path encoding: ${error.message}`);
+  }
+
+  if (relativePath.includes("\0")) throw new HttpError(400, "artifact path contains invalid characters");
+  const requested = resolve(filesDir, relativePath);
+  if (!isInside(filesDir, requested)) {
+    throw new HttpError(400, `artifact path must stay within FILES_DIR (${filesDir})`);
+  }
+  return requested;
+}
+
+async function sendArtifactFile(res, path) {
+  let fileStat;
+  try {
+    fileStat = await stat(path);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      throw new HttpError(404, "artifact not found");
+    }
+    throw error;
+  }
+
+  if (!fileStat.isFile()) throw new HttpError(404, "artifact not found");
+
+  res.writeHead(200, {
+    "content-type": contentTypeForPath(path),
+    "content-length": fileStat.size,
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  });
+
+  await new Promise((resolveStream, reject) => {
+    const stream = createReadStream(path);
+    stream.on("error", reject);
+    stream.on("end", resolveStream);
+    stream.pipe(res);
+  });
 }
 
 function serializeError(error) {
@@ -457,6 +539,25 @@ const openApiSpec = {
   paths: {
     "/health": { get: { responses: { 200: { description: "Health check" } } } },
     "/readiness": { get: { responses: { 200: { description: "Readiness check" } } } },
+    "/artifacts/{path}": {
+      get: {
+        summary: "Serve generated artifact files from FILES_DIR",
+        parameters: [
+          {
+            name: "path",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "Relative artifact path under FILES_DIR",
+          },
+        ],
+        responses: {
+          200: { description: "Artifact file" },
+          400: { description: "Invalid artifact path" },
+          404: { description: "Artifact not found" },
+        },
+      },
+    },
     "/invocations": {
       post: {
         summary: "Invoke pi",
@@ -531,6 +632,12 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/invocations/docs/openapi.json") {
       sendJson(res, 200, openApiSpec);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/artifacts/")) {
+      const artifactPath = resolveArtifactPath(url.pathname);
+      await sendArtifactFile(res, artifactPath);
       return;
     }
 
