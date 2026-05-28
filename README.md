@@ -185,6 +185,10 @@ Response:
 }
 ```
 
+## Remote Foundry invocation
+
+Remote deployment, invocation, monitoring, and session-continuity commands are documented in [DEPLOY.md](./DEPLOY.md). Use CLI invocation for demos instead of relying on the Foundry Playground chat renderer.
+
 ## Session smoke test
 
 With a running real server:
