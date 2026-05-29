@@ -6,7 +6,8 @@ UX goal:
 
 ```text
 cd my-pi-agent
-azd init --template <pi-foundry-azd-template> .
+azd init --template <pi-foundry-azd-template> . --environment my-pi-agent
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd up
 ```
 
@@ -40,7 +41,7 @@ ARG PI_FOUNDRY_RUNTIME_IMAGE=ghcr.io/1openwindow/pi-foundry-runtime:0.1.0
 FROM ${PI_FOUNDRY_RUNTIME_IMAGE}
 ```
 
-Publish the runtime image before using this adapter for real deployments, or override the build arg to point to an internal image.
+Publish the runtime image before using this adapter for real deployments, then set `PI_FOUNDRY_RUNTIME_IMAGE` in `azd env` to point to that image.
 
 The `azd up` workflow runs:
 

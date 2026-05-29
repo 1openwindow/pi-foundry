@@ -8,7 +8,7 @@ The primary user experience is now:
 
 ```text
 cd my-existing-pi-agent
-# add a thin azd adapter, not a wrapper repo
+azd init --template <pi-foundry-azd-template> . --environment my-agent
 azd up
 ```
 
@@ -85,21 +85,27 @@ The skill acts as the UX layer for vibe-coding workflows: it identifies whether 
 
 ### Azd-native adapter quickstart
 
-The default UX is to add deployment configuration to the user's existing Pi agent repo and keep `azd up` as the canonical command. The thin adapter lives under `templates/azd-native/` and can be installed from this development checkout with:
+The default UX is to add deployment configuration to the user's existing Pi agent repo with `azd init --template`, then use `azd up` as the canonical deploy command.
 
-```bash
-cd ~/repos/pi-foundry
-npm run install:azd-adapter -- \
-  --target ~/repos/my-agent \
-  --name my-agent \
-  --acr <registry>.azurecr.io \
-  --dry-run
-```
-
-After review, run without `--dry-run`, configure `azd env` values in the target repo, run the adapter doctor, and use `azd up`:
+From the user's existing Pi agent repo:
 
 ```bash
 cd ~/repos/my-agent
+azd init --template <pi-foundry-azd-template> . --environment my-agent
+```
+
+For local development before the template is published as a standalone repo, use the local template path:
+
+```bash
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment my-agent
+```
+
+Then configure `azd env` values, run the adapter doctor, and deploy:
+
+```bash
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
+# set Foundry + PI_* values
 node .azd/pi-foundry/doctor.mjs
 azd up
 ```

@@ -45,24 +45,22 @@ Message to tell:
 The original Pi agent repo is still the source of truth. We added deployment configuration, not a wrapper repo and not runtime source.
 ```
 
-## Demo 2: show azd-native adapter installation dry-run
+## Demo 2: show azd-native adapter initialization
 
-From the runtime/template repo:
+From the existing Pi agent repo:
 
 ```bash
-cd ~/repos/pi-foundry
-npm run install:azd-adapter -- \
-  --target ~/repos/media-report-agent \
-  --name media-report-agent \
-  --acr crce6hg4ngzj3as.azurecr.io \
-  --runtime-image crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0 \
-  --dry-run
+cd ~/repos/media-report-agent
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment media-report-agent
 ```
 
 Expected:
 
-- shows only deployment files to create/overwrite
-- explicitly says no agent business-code files will be modified
+- `azd init` warns before copying files into a non-empty repo
+- template files are added in place
+- no agent business-code files are modified
+
+For an already initialized repo, skip this step and show the committed adapter files instead.
 
 ## Demo 3: runtime image remote build
 

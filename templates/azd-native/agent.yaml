@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
 kind: hosted
-name: __AGENT_NAME__
+name: ${AZURE_ENV_NAME}
 protocols:
   - protocol: invocations
     version: 1.0.0
-image: __CONTAINER_IMAGE__
+image: ${AZURE_CONTAINER_REGISTRY_ENDPOINT}/${AZURE_ENV_NAME}:latest
 resources:
   cpu: "2"
   memory: 4Gi

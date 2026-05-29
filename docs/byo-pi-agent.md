@@ -78,26 +78,20 @@ The adapter only adds deployment configuration to the existing repo.
 
 ## Install the azd-native adapter
 
-From a `pi-foundry` development checkout, preview first:
+From the existing Pi agent repo, initialize from the pi-foundry azd template:
 
 ```bash
-npm run install:azd-adapter -- \
-  --target <existing-pi-agent-path> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0 \
-  --dry-run
+cd <existing-pi-agent-path>
+azd init --template <pi-foundry-azd-template> . --environment <agent-name>
 ```
 
-Apply after review:
+For local development before the template is published as a standalone repo, use the local template path:
 
 ```bash
-npm run install:azd-adapter -- \
-  --target <existing-pi-agent-path> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment <agent-name>
 ```
+
+`azd init` warns when the current directory is not empty and asks for confirmation before copying template files into the repo.
 
 Files added to the existing Pi agent repo:
 
@@ -164,6 +158,8 @@ Typical setup:
 ```bash
 cd <existing-pi-agent-path>
 azd env new <env-name>
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set ENABLE_DIAGNOSTICS 0

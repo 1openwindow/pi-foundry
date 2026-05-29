@@ -68,13 +68,12 @@ Default recommendation:
 1. Identify the current directory type:
    - Existing Pi agent repo: has `.agents/skills/`, `prompts/`, `mcp.config.json`, or `demo-workspace/`.
    - Already adapted repo: has `azure.yaml` and `.azd/pi-foundry/Dockerfile`.
-   - pi-foundry development checkout: has `templates/azd-native/` and `scripts/install-azd-adapter.mjs`.
+   - pi-foundry development checkout: has `templates/azd-native/`.
 2. Inspect status with safe commands:
    - `pwd`
    - `git status --short` when inside a git repo
    - `find . -maxdepth 3 ...` for relevant files if needed
-3. Prefer dry-runs before writing:
-   - `npm run install:azd-adapter -- ... --dry-run`
+3. Initialize with azd from the user's repo. `azd init` warns before copying template files into a non-empty directory.
 4. Before deploy, run from the user repo:
    - `node .azd/pi-foundry/doctor.mjs`
 
@@ -89,7 +88,7 @@ Ask only for missing values:
 - Existing Pi agent path, default to current directory if it looks like a Pi agent.
 - Agent/deployment name, e.g. `media-report-agent`.
 - ACR endpoint, e.g. `<registry>.azurecr.io`.
-- Runtime image, usually `<registry>.azurecr.io/pi-foundry-runtime:0.1.0`.
+- Runtime image, usually `<registry>.azurecr.io/pi-foundry-runtime:0.1.0`; set it as `PI_FOUNDRY_RUNTIME_IMAGE` in `azd env`.
 - Foundry/model values later, only when configuring deploy:
   - `PI_OPENAI_BASE_URL`
   - `PI_OPENAI_MODEL`
@@ -100,26 +99,20 @@ Never print secrets. Do not write secrets into repo files.
 
 ### Install adapter
 
-From the `pi-foundry` development checkout, install the thin adapter into the existing Pi agent repo with a dry-run first:
+From the existing Pi agent repo, initialize with azd:
 
 ```bash
-npm run install:azd-adapter -- \
-  --target <existing-pi-agent-path> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0 \
-  --dry-run
+cd <existing-pi-agent-path>
+azd init --template <pi-foundry-azd-template> . --environment <agent-name>
 ```
 
-After user approval, run without `--dry-run`:
+For local development before the template is published as a standalone repo, use the local template path:
 
 ```bash
-npm run install:azd-adapter -- \
-  --target <existing-pi-agent-path> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment <agent-name>
 ```
+
+`azd init` warns when the current directory is not empty and asks for confirmation before copying template files into the repo.
 
 Explain clearly that this adds deployment configuration files only:
 
@@ -168,6 +161,8 @@ Typical values:
 
 ```bash
 azd env new <env-name>
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set ENABLE_DIAGNOSTICS 0

@@ -73,33 +73,18 @@ The first prototype lives at:
 templates/azd-native/
 ```
 
-It can be installed into an existing Pi agent repo from this development checkout with:
-
-```bash
-cd ~/repos/pi-foundry
-npm run install:azd-adapter -- \
-  --target ~/repos/my-agent \
-  --name my-agent \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0 \
-  --dry-run
-```
-
-Then apply after review:
-
-```bash
-npm run install:azd-adapter -- \
-  --target ~/repos/my-agent \
-  --name my-agent \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0
-```
-
-From the user's repo:
+It can be initialized into an existing Pi agent repo with `azd init --template`:
 
 ```bash
 cd ~/repos/my-agent
-azd env new my-agent
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment my-agent
+```
+
+Then configure environment values from the user's repo:
+
+```bash
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set 'PI_ARGS=--mode rpc --no-session --provider foundry --model <model>'

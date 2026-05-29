@@ -109,7 +109,7 @@ async function main() {
   if (envResult.ok) {
     pass("azd environment selected");
     const values = parseEnvValues(envResult.stdout);
-    for (const name of ["FOUNDRY_PROJECT_ENDPOINT", "AZURE_CONTAINER_REGISTRY_ENDPOINT", "PI_ARGS", "REQUEST_TIMEOUT_MS"]) {
+    for (const name of ["FOUNDRY_PROJECT_ENDPOINT", "AZURE_CONTAINER_REGISTRY_ENDPOINT", "PI_FOUNDRY_RUNTIME_IMAGE", "PI_ARGS", "REQUEST_TIMEOUT_MS"]) {
       if (envHas(values, name)) pass(`azd env has ${name}`);
       else fail(`azd env missing ${name}`);
     }

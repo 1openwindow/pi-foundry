@@ -122,27 +122,24 @@ src/runtime/artifacts.mjs
 
 ## Main user workflow
 
-From the `pi-foundry` development checkout, install the adapter into an existing Pi agent repo:
+From the existing Pi agent repo, initialize with the azd template:
 
 ```bash
-npm run install:azd-adapter -- \
-  --target <path-to-existing-pi-agent> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0 \
-  --dry-run
-
-npm run install:azd-adapter -- \
-  --target <path-to-existing-pi-agent> \
-  --name <agent-name> \
-  --acr <registry>.azurecr.io \
-  --runtime-image <registry>.azurecr.io/pi-foundry-runtime:0.1.0
+cd <path-to-existing-pi-agent>
+azd init --template <pi-foundry-azd-template> . --environment <agent-name>
 ```
 
-Then from the existing Pi agent repo:
+For local development before publishing a standalone template repo:
 
 ```bash
-azd env new <agent-name>
+azd init --template ~/repos/pi-foundry/templates/azd-native . --environment <agent-name>
+```
+
+Then from the same repo:
+
+```bash
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
+azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set ...
 node .azd/pi-foundry/doctor.mjs
 azd up

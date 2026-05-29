@@ -3,7 +3,7 @@
 requiredVersions:
   extensions:
     azure.ai.agents: '>=0.1.0-preview'
-name: __AGENT_NAME__
+name: pi-foundry-agent
 workflows:
   up:
     - azd: exec -- node .azd/pi-foundry/doctor.mjs
@@ -11,7 +11,7 @@ workflows:
     - azd: deploy --all
     - azd: exec -- node .azd/pi-foundry/postdeploy.mjs
 services:
-  __AGENT_NAME__:
+  pi-agent:
     project: .
     host: azure.ai.agent
     language: docker
@@ -19,6 +19,8 @@ services:
       path: .azd/pi-foundry/Dockerfile
       context: .
       remoteBuild: true
+      buildArgs:
+        - PI_FOUNDRY_RUNTIME_IMAGE=${PI_FOUNDRY_RUNTIME_IMAGE}
     config:
       container:
         resources:
