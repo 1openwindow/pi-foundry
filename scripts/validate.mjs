@@ -95,6 +95,8 @@ async function main() {
     "docs/byo-pi-agent.md",
     "docs/existing-pi-agent-journey.md",
     "docs/deploy-existing-pi-agent.md",
+    "docs/demo-checklist.md",
+    "docs/handoff.md",
     "src/runtime/artifacts.mjs",
     "scripts/configure-agent.mjs",
     "scripts/import-pi-agent.mjs",

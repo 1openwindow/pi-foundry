@@ -5,16 +5,20 @@
 > subscription, ACR, storage, model, or version values here as defaults for your
 > own BYO Pi Agent deployment.
 
-Last updated: 2026-05-27
+Last updated: 2026-05-29
 
 ## Goal
 
-Run pi as a Microsoft Foundry Hosted Agent:
+Run Pi as a Microsoft Foundry Hosted Agent and provide a reusable **Bring Your Own Pi Agent to Foundry** template.
 
-1. Local HTTP wrapper around pi RPC
-2. Local Docker image
-3. Foundry Hosted Agent deployment
-4. Real remote model invocation through Foundry OpenAI-compatible endpoint
+The current recommended architecture is:
+
+```text
+Official Invocations mode for Foundry deployment
+Node direct mode for local development, backend validation, and fallback
+```
+
+See [docs/handoff.md](./docs/handoff.md) for the current handoff and [docs/demo-checklist.md](./docs/demo-checklist.md) for demo commands.
 
 ## Current status
 
@@ -28,17 +32,20 @@ Complete:
 - Remote session continuity works
 - Static website artifact publishing works
 
-Current known-good remote agent:
+Current known-good remote agents:
 
-- Agent name: `pi-foundry`
-- Version: `4`
-- Protocol: `invocations`
-- Endpoint:
-  `https://zihch-eus2.services.ai.azure.com/api/projects/zihch-eus2/agents/pi-foundry/endpoint/protocols/invocations?api-version=2025-11-15-preview`
-- Playground:
-  `https://ai.azure.com/nextgen/r/F1arwDVUQ0GNakZnSWLqGQ,zihch-test-eus2,,zihch-eus2,zihch-eus2/build/agents/pi-foundry/build?version=4`
-- Artifact static website:
-  `https://pifoundryeus2web.z20.web.core.windows.net/`
+- `media-report-foundry` version `1`: validates the existing Pi agent import story.
+- `pi-foundry-official-invocations` version `3`: validates the official `azure-ai-agentserver-invocations` host as the public protocol layer with the Node Pi backend.
+
+Historical known-good agent:
+
+- `pi-foundry` version `4`/later validated direct Node Invocations mode during the original proof.
+
+Artifact static website for the internal deployment:
+
+```text
+https://pifoundryeus2web.z20.web.core.windows.net/
+```
 
 ## Project layout
 
