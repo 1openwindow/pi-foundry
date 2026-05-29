@@ -178,6 +178,7 @@ async function checkRepoShape() {
   const requiredFiles = [
     "README.md",
     "Dockerfile",
+    "Dockerfile.official",
     "azure.yaml",
     "agent.yaml",
     "agent.manifest.yaml",
@@ -193,12 +194,11 @@ async function checkRepoShape() {
     "scripts/import-pi-agent.mjs",
     "scripts/grant-artifact-rbac.mjs",
     "scripts/demo-remote-artifact.sh",
-    "experiments/official-invocations-wrapper/README.md",
-    "experiments/official-invocations-wrapper/main.py",
-    "experiments/official-invocations-wrapper/requirements.txt",
-    "experiments/official-invocations-wrapper/Dockerfile",
-    "experiments/official-invocations-wrapper/entrypoint.sh",
-    "experiments/official-invocations-wrapper/smoke-local.sh",
+    "runtime/official-invocations/README.md",
+    "runtime/official-invocations/main.py",
+    "runtime/official-invocations/requirements.txt",
+    "runtime/official-invocations/entrypoint.sh",
+    "runtime/official-invocations/smoke-local.sh",
   ];
 
   for (const file of requiredFiles) {

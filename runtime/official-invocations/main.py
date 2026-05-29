@@ -13,8 +13,8 @@ Run locally with a Node backend in another shell:
 Then run this wrapper:
 
     PI_FOUNDRY_BACKEND_URL=http://127.0.0.1:18080 uv run \
-      --with-requirements experiments/official-invocations-wrapper/requirements.txt \
-      experiments/official-invocations-wrapper/main.py
+      --with-requirements runtime/official-invocations/requirements.txt \
+      runtime/official-invocations/main.py
 
 Invoke the wrapper:
 

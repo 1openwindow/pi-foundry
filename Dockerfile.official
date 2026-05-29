@@ -27,7 +27,7 @@ RUN apt-get update \
 USER node
 WORKDIR /app
 
-COPY --chown=node:node experiments/official-invocations-wrapper/requirements.txt /opt/official-invocations-wrapper/requirements.txt
+COPY --chown=node:node runtime/official-invocations/requirements.txt /opt/official-invocations-wrapper/requirements.txt
 RUN uv venv /opt/official-invocations-wrapper/.venv \
     && uv pip install --python /opt/official-invocations-wrapper/.venv/bin/python -r /opt/official-invocations-wrapper/requirements.txt
 
@@ -35,11 +35,11 @@ COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --chown=node:node src ./src
-COPY --chown=node:node experiments ./experiments
+COPY --chown=node:node runtime ./runtime
 COPY --chown=node:node .agents/skills /workspace/.agents/skills
 COPY --chown=node:node demo-workspace /workspace
 
-RUN chmod +x /app/experiments/official-invocations-wrapper/entrypoint.sh
+RUN chmod +x /app/runtime/official-invocations/entrypoint.sh
 
 EXPOSE 8088
-CMD ["/app/experiments/official-invocations-wrapper/entrypoint.sh"]
+CMD ["/app/runtime/official-invocations/entrypoint.sh"]

@@ -6,7 +6,37 @@ You bring Pi skills, MCP servers, tools, prompts, model/provider configuration, 
 
 This project started as a proof that `pi` can run on Foundry. It is now being shaped into a reusable **Bring Your Own Pi Agent to Foundry** template. See [docs/byo-pi-agent.md](./docs/byo-pi-agent.md) for the template contract and recommended customization path.
 
-Current runtime shape:
+## Runtime modes
+
+`pi-foundry` now keeps two supported runtime modes:
+
+### Official Invocations mode
+
+Recommended for Foundry deployment experiments and future production hardening. The public container port is served by the official Python `azure-ai-agentserver-invocations` host, which proxies to the Node Pi backend on `127.0.0.1:18080`:
+
+```text
+Foundry /invocations
+  -> official Invocations host
+  -> Node Pi backend
+  -> pi --mode rpc
+```
+
+Use `Dockerfile.official` or the runtime files under `runtime/official-invocations/` for this mode. Validate it locally with:
+
+```bash
+npm run smoke:official
+```
+
+### Node direct mode
+
+Recommended for local development, fast debugging, backend validation, and fallback deployments. The Node server directly exposes `/invocations` and is also the backend used by official mode:
+
+```bash
+PI_MOCK=1 npm start
+npm run smoke
+```
+
+Current Node backend shape:
 
 - `GET /health`
 - `GET /readiness`

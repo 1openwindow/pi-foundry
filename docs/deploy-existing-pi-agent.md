@@ -18,6 +18,16 @@ Check local tools:
 npm run validate
 ```
 
+## Runtime mode
+
+For local development, `npm start` runs the Node direct server. For official Invocations mode, use:
+
+```bash
+npm run smoke:official
+```
+
+For Foundry deployments that should use the official protocol host, build with `Dockerfile.official` or configure your deployment project to use the official entrypoint. Keep Node direct mode available for local debugging and fallback deployments.
+
 ## 1. Create/configure the wrapper project
 
 From a fresh copy of this template:

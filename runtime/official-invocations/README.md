@@ -39,8 +39,8 @@ In another shell, run the official wrapper:
 
 ```bash
 PI_FOUNDRY_BACKEND_URL=http://127.0.0.1:18080 \
-uv run --with-requirements experiments/official-invocations-wrapper/requirements.txt \
-  experiments/official-invocations-wrapper/main.py
+uv run --with-requirements runtime/official-invocations/requirements.txt \
+  runtime/official-invocations/main.py
 ```
 
 Invoke the official wrapper:
@@ -66,7 +66,7 @@ data: {"type":"done", ...}
 From the repo root:
 
 ```bash
-experiments/official-invocations-wrapper/smoke-local.sh
+runtime/official-invocations/smoke-local.sh
 ```
 
 This starts the Node backend in mock mode, starts the official wrapper, calls
@@ -84,7 +84,7 @@ Build from the repo root:
 
 ```bash
 docker build \
-  -f experiments/official-invocations-wrapper/Dockerfile \
+  -f Dockerfile.official \
   -t pi-foundry-official-invocations:local \
   .
 ```

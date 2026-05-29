@@ -21,8 +21,8 @@ PORT="${NODE_PORT}" PI_MOCK=1 npm start >/tmp/pi-foundry-official-wrapper-node.l
 node_pid="$!"
 
 PI_FOUNDRY_BACKEND_URL="http://127.0.0.1:${NODE_PORT}" \
-uv run --with-requirements experiments/official-invocations-wrapper/requirements.txt \
-  experiments/official-invocations-wrapper/main.py >/tmp/pi-foundry-official-wrapper-python.log 2>&1 &
+uv run --with-requirements runtime/official-invocations/requirements.txt \
+  runtime/official-invocations/main.py >/tmp/pi-foundry-official-wrapper-python.log 2>&1 &
 wrapper_pid="$!"
 
 for _ in $(seq 1 60); do

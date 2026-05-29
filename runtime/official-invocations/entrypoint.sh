@@ -39,7 +39,7 @@ fi
 
 echo "Starting official Invocations wrapper on public port ${PORT:-8088}"
 echo "Proxy backend: ${PI_FOUNDRY_BACKEND_URL}"
-/opt/official-invocations-wrapper/.venv/bin/python /app/experiments/official-invocations-wrapper/main.py &
+/opt/official-invocations-wrapper/.venv/bin/python /app/runtime/official-invocations/main.py &
 python_pid="$!"
 
 wait -n "${node_pid}" "${python_pid}"
