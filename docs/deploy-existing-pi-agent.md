@@ -28,7 +28,38 @@ npm run smoke:official
 
 For Foundry deployments that should use the official protocol host, build with `Dockerfile.official` or configure your deployment project to use the official entrypoint. Keep Node direct mode available for local debugging and fallback deployments.
 
-## 1. Create/configure the wrapper project
+## Fast path: create a wrapper from this template
+
+From the `pi-foundry` template repo, create a new wrapper and import an existing Pi agent in one step:
+
+```bash
+npm run create:wrapper -- \
+  --name <agent-name> \
+  --target ~/repos/<agent-name> \
+  --from <path-to-existing-pi-agent> \
+  --mode official \
+  --acr <registry>.azurecr.io
+```
+
+Then copy known-good environment values from an existing working repo:
+
+```bash
+cd ~/repos/<agent-name>
+npm run copy:azd-env -- \
+  --from ~/repos/pi-foundry \
+  --env <agent-name> \
+  --artifact-prefix <agent-name>
+```
+
+Deploy and grant artifact RBAC:
+
+```bash
+npm run deploy:foundry
+```
+
+The manual steps below are kept for transparency and external users who do not have a working source env to copy from.
+
+## 1. Create/configure the wrapper project manually
 
 From a fresh copy of this template:
 

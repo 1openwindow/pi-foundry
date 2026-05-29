@@ -120,7 +120,27 @@ src/runtime/artifacts.mjs
 
 ## Main user workflow
 
-From a fresh wrapper project:
+Fast path from the template repo:
+
+```bash
+npm run create:wrapper -- \
+  --name <agent-name> \
+  --target ~/repos/<agent-name> \
+  --from <path-to-existing-pi-agent> \
+  --mode official \
+  --acr <registry>.azurecr.io
+
+cd ~/repos/<agent-name>
+npm run copy:azd-env -- \
+  --from ~/repos/pi-foundry \
+  --env <agent-name> \
+  --artifact-prefix <agent-name>
+
+npm run deploy:foundry
+npm run demo:remote:artifact -- <agent-name> <version>
+```
+
+Manual path from a fresh wrapper project:
 
 ```bash
 cp agent.config.example.yaml agent.config.yaml

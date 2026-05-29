@@ -28,18 +28,23 @@ prompts/narrated-product-update.zh.md
 demo-workspace/sources/q2-product-brief.md
 ```
 
-## Demo 2: show import/configure workflow from the template
+## Demo 2: show wrapper creation workflow from the template
 
 Use dry-run from the template repo:
 
 ```bash
 cd ~/repos/pi-foundry
-npm run configure:agent -- demo-pi-agent --dry-run
-npm run import:pi-agent -- ~/repos/media-report-agent --dry-run
+npm run create:wrapper -- \
+  --name demo-pi-agent \
+  --target ~/repos/demo-pi-agent \
+  --from ~/repos/media-report-agent \
+  --mode official \
+  --acr crce6hg4ngzj3as.azurecr.io \
+  --dry-run
 npm run validate
 ```
 
-This demonstrates that a user can configure a wrapper and import common Pi-owned assets without modifying the runtime manually.
+This demonstrates that a user can create a wrapper, configure the agent, switch to official mode, and import common Pi-owned assets with one command.
 
 ## Demo 3: validate the imported wrapper project
 
