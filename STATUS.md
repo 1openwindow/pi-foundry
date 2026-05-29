@@ -1,5 +1,10 @@
 # pi-foundry Status
 
+> Internal handoff note. This file records one known-good development/deployment
+> environment and is not required for template users. Do not treat endpoint,
+> subscription, ACR, storage, model, or version values here as defaults for your
+> own BYO Pi Agent deployment.
+
 Last updated: 2026-05-27
 
 ## Goal

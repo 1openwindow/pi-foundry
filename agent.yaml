@@ -4,7 +4,7 @@ name: pi-foundry
 protocols:
   - protocol: invocations
     version: 1.0.0
-image: zihchpifoundry.azurecr.io/pi-foundry:latest
+image: example.azurecr.io/pi-foundry:latest
 resources:
   cpu: "2"
   memory: 4Gi

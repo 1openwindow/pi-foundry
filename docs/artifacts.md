@@ -2,24 +2,24 @@
 
 `pi-foundry` can publish generated files to an Azure Storage Static Website so users can open HTML reports, MP3 narration, MP4 videos, images, and ZIP bundles from a normal HTTPS URL.
 
-## Current deployment
+## Deployment shape
 
-Current artifact static website:
+Configure an Azure Storage Static Website endpoint for your deployment:
 
 ```text
-https://pifoundryeus2web.z20.web.core.windows.net/
+https://<storage-account>.<zone>.web.core.windows.net/
 ```
 
 Published artifact URLs use this prefix:
 
 ```text
-https://pifoundryeus2web.z20.web.core.windows.net/pi-foundry/<yyyy-mm-dd>/<request-id>/...
+https://<storage-account>.<zone>.web.core.windows.net/<ARTIFACT_BLOB_PREFIX>/<yyyy-mm-dd>/<request-id>/...
 ```
 
 Example:
 
 ```text
-https://pifoundryeus2web.z20.web.core.windows.net/pi-foundry/2026-05-28/<request-id>/index.html
+https://<storage-account>.<zone>.web.core.windows.net/my-pi-agent/2026-05-28/<request-id>/index.html
 ```
 
 ## Security model
@@ -56,14 +56,14 @@ If artifacts need authenticated access, replace this static website approach wit
 | `ARTIFACT_MAX_PUBLISH_BYTES` | Maximum bytes to publish per invocation, default 100 MiB |
 | `ARTIFACT_PROMPT_HINTS` | Set to `0` or `false` to disable prompt hints |
 
-Current values:
+Example values:
 
 ```text
 ARTIFACT_PUBLISH_MODE=static-web
-ARTIFACT_STORAGE_ACCOUNT=pifoundryeus2web
-ARTIFACT_STATIC_WEB_ENDPOINT=https://pifoundryeus2web.z20.web.core.windows.net
+ARTIFACT_STORAGE_ACCOUNT=<storage-account>
+ARTIFACT_STATIC_WEB_ENDPOINT=https://<storage-account>.<zone>.web.core.windows.net
 ARTIFACT_STATIC_WEB_CONTAINER=$web
-ARTIFACT_BLOB_PREFIX=pi-foundry
+ARTIFACT_BLOB_PREFIX=<agent-name>
 ```
 
 ## How publishing works
@@ -95,7 +95,7 @@ Example response snippet:
       "path": "index.html",
       "contentType": "text/html; charset=utf-8",
       "size": 83,
-      "url": "https://pifoundryeus2web.z20.web.core.windows.net/pi-foundry/2026-05-28/<request-id>/index.html"
+      "url": "https://<storage-account>.<zone>.web.core.windows.net/<agent-name>/2026-05-28/<request-id>/index.html"
     }
   ]
 }
@@ -141,17 +141,22 @@ Grant the hosted agent identities access to upload to the storage account or `$w
 Storage Blob Data Contributor
 ```
 
-The current deployment granted this role to the relevant Foundry account/project/agent/hosted-agent identities. The local deployment user was also granted storage data-plane access for smoke testing.
+For a newly deployed Hosted Agent, run:
+
+```bash
+npm run grant:artifact-rbac -- <agent-name> <storage-account>
+```
+
+The script grants this role to the deployed agent instance and blueprint identities. The local deployment user also needs storage data-plane access if you want to smoke test publishing locally.
 
 ## Smoke test
 
 Remote invocation:
 
 ```bash
-cd /home/zihch/repos/pi-foundry
-azd ai agent invoke pi-foundry \
+azd ai agent invoke <agent-name> \
   --protocol invocations \
-  --version 4 \
+  --version <version> \
   --new-session \
   --timeout 600 \
   'Create a downloadable static HTML artifact named index.html. The page should contain exactly: <h1>Foundry artifact ok</h1>. Save it under the artifact directory you were instructed to use. Reply concisely.'

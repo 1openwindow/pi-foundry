@@ -1,8 +1,12 @@
 # pi-foundry
 
-Minimal local wrapper for running pi behind an HTTP endpoint that can later be adapted to Microsoft Foundry Hosted Agents.
+Template and reference implementation for bringing your own Pi agent to Microsoft Foundry Hosted Agents.
 
-Current shape:
+You bring Pi skills, MCP servers, tools, prompts, model/provider configuration, and environment variables. This template provides the Foundry Invocations bridge, Pi RPC lifecycle, session mapping, streaming, Docker packaging, deployment files, health/readiness endpoints, and artifact delivery.
+
+This project started as a proof that `pi` can run on Foundry. It is now being shaped into a reusable **Bring Your Own Pi Agent to Foundry** template. See [docs/byo-pi-agent.md](./docs/byo-pi-agent.md) for the template contract and recommended customization path.
+
+Current runtime shape:
 
 - `GET /health`
 - `GET /readiness`
@@ -15,6 +19,55 @@ Current shape:
 - Uses fixed runtime directories for Docker/Foundry-style execution
 - Supports `PI_MOCK=1` for local wrapper testing without model credentials
 
+## Bring your own Pi agent
+
+Customize the agent layer:
+
+- Add or replace Pi skills under `.agents/skills/`.
+- Configure MCP servers, if your Pi setup uses them.
+- Configure model/provider settings with `PI_ARGS` and `PI_OPENAI_*` environment variables.
+- Add third-party credentials such as `GITHUB_TOKEN` or `JIRA_TOKEN` through your deployment environment.
+- Write generated downloadable outputs under the artifact directory and optionally provide `artifact-manifest.json`.
+
+The common path should not require changing `src/server.mjs`, `Dockerfile`, `agent.yaml`, `agent.manifest.yaml`, or `azure.yaml`.
+
+Start from the documented high-level config contract:
+
+```bash
+cp agent.config.example.yaml agent.config.yaml
+npm run validate
+```
+
+### Existing Pi agent quickstart
+
+If you already have a local Pi agent project, for example one with `edge-tts` and `hyperframes` skills, configure the wrapper name and import its common assets into this template:
+
+```bash
+cp agent.config.example.yaml agent.config.yaml
+npm run configure:agent -- media-report-foundry
+npm run import:pi-agent -- ../my-existing-pi-agent --dry-run
+npm run import:pi-agent -- ../my-existing-pi-agent
+npm run doctor
+```
+
+The importer copies common Pi-owned assets such as `.agents/skills/*`, MCP config files, `prompts/`, and `demo-workspace/`. The template-owned runtime files stay in place.
+
+Then configure `azd` environment values for `PI_ARGS`, `PI_OPENAI_*`, and artifact publishing, deploy with `azd deploy --no-prompt`, and invoke the hosted agent through Foundry Invocations. If artifact publishing is enabled for a new Hosted Agent, grant storage write access to its managed identities:
+
+```bash
+npm run grant:artifact-rbac -- media-report-foundry <storage-account>
+```
+
+After deployment, run a remote artifact demo with:
+
+```bash
+AGENT_NAME=media-report-foundry AGENT_VERSION=<version> npm run demo:remote:artifact
+```
+
+See [docs/deploy-existing-pi-agent.md](./docs/deploy-existing-pi-agent.md) for the short deployment checklist and [docs/existing-pi-agent-journey.md](./docs/existing-pi-agent-journey.md) for the full walkthrough.
+
+> Note: [STATUS.md](./STATUS.md) is an internal handoff file for one known-good deployment environment. Template users should follow the generic README/docs and replace placeholders with their own Foundry, model, ACR, and storage values.
+
 ## Runtime directories
 
 | Variable | Default | Purpose |
@@ -26,8 +79,8 @@ Current shape:
 | `PI_CODING_AGENT_DIR` | `$HOME/.pi/agent`; Docker sets `$STATE_DIR/pi-agent` | pi config/cache/session root |
 | `ENABLE_DIAGNOSTICS` | `0` | Enables `/diagnostics` request handling when set to `1` or `true` |
 | `PI_OPENAI_API_KEY` | unset | When set, writes a `foundry` provider to pi `models.json` |
-| `PI_OPENAI_BASE_URL` | `https://zihch-test-wus3-resource.services.ai.azure.com/openai/v1` | Foundry OpenAI-compatible endpoint |
-| `PI_OPENAI_MODEL` | `gpt-5.4-mini` | Foundry deployment/model name |
+| `PI_OPENAI_BASE_URL` | `https://<account>.cognitiveservices.azure.com/openai/v1` | Foundry OpenAI-compatible endpoint |
+| `PI_OPENAI_MODEL` | `<foundry-model-or-deployment>` | Foundry deployment/model name |
 
 Requests may include `cwd`, but it must resolve inside `WORKSPACE_DIR`. Requests may include `sessionId`; if omitted, the server generates one and returns it. Each `sessionId` maps to `$SESSIONS_DIR/<sessionId>/pi-sessions`.
 
@@ -149,9 +202,9 @@ Manual real run with Foundry OpenAI-compatible provider:
 ```bash
 docker run --rm -p 8080:8088 \
   -e PI_OPENAI_API_KEY \
-  -e PI_OPENAI_BASE_URL="https://zihch-test-wus3-resource.services.ai.azure.com/openai/v1" \
-  -e PI_OPENAI_MODEL="gpt-5.4-mini" \
-  -e PI_ARGS="--mode rpc --no-session --provider foundry --model gpt-5.4-mini" \
+  -e PI_OPENAI_BASE_URL="https://<account>.cognitiveservices.azure.com/openai/v1" \
+  -e PI_OPENAI_MODEL="<foundry-model-or-deployment>" \
+  -e PI_ARGS="--mode rpc --no-session --provider foundry --model <foundry-model-or-deployment>" \
   pi-foundry:local
 ```
 

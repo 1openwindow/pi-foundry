@@ -1,0 +1,76 @@
+# Example high-level configuration for bringing your own Pi agent to Foundry.
+#
+# This file is currently a documented contract for template users. Runtime values
+# are still supplied through azd environment variables and agent.yaml. Future
+# iterations can use this file to generate/validate those lower-level files.
+
+name: pi-foundry
+displayName: My Pi Agent on Foundry
+description: Bring your own Pi skills, MCP servers, tools, prompts, and configuration to Microsoft Foundry.
+
+runtime:
+  type: pi-rpc
+  command: pi
+  # The wrapper removes --no-session per invocation and adds:
+  # --continue --session-dir <session-specific-dir>
+  args:
+    - --mode
+    - rpc
+    - --no-session
+  provider: foundry
+  # Replace with your Foundry model/deployment name, and keep it aligned with
+  # PI_OPENAI_MODEL and the --model value in PI_ARGS.
+  model: <foundry-model-or-deployment>
+
+foundry:
+  protocol: invocations
+  resources:
+    # Valid Hosted Agent tiers currently include:
+    # (0.25, 0.5Gi), (0.5, 1Gi), (1, 2Gi), (2, 4Gi)
+    cpu: "2"
+    memory: 4Gi
+
+workspace:
+  # Docker/Foundry defaults. Keep runtime code, workspace, generated files, and
+  # session state conceptually separate.
+  root: /workspace
+  files: /files
+
+sessions:
+  enabled: true
+  mode: pi-session-dir
+  root: /home/node/.pi-foundry/sessions
+
+skills:
+  # Bring your own Pi skills here. Demo skills such as edge-tts and hyperframes
+  # are examples, not runtime requirements.
+  path: .agents/skills
+
+mcp:
+  optional: true
+  config: mcp.config.json
+
+artifacts:
+  enabled: true
+  # Use static-web when you want remote clickable artifact links. Use disabled
+  # for local-only artifact collection.
+  mode: static-web
+  manifest: artifact-manifest.json
+  maxBytes: 104857600
+
+environment:
+  required:
+    - PI_ARGS
+    - REQUEST_TIMEOUT_MS
+  requiredForRealModel:
+    - PI_OPENAI_API_KEY
+    - PI_OPENAI_BASE_URL
+    - PI_OPENAI_MODEL
+  optional:
+    - ARTIFACT_PUBLISH_MODE
+    - ARTIFACT_STORAGE_ACCOUNT
+    - ARTIFACT_STATIC_WEB_ENDPOINT
+    - ARTIFACT_STATIC_WEB_CONTAINER
+    - ARTIFACT_BLOB_PREFIX
+    - GITHUB_TOKEN
+    - JIRA_TOKEN

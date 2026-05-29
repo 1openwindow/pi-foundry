@@ -5,6 +5,12 @@
   "version": "0.0.0",
   "scripts": {
     "start": "node src/server.mjs",
+    "validate": "node scripts/validate.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "configure:agent": "node scripts/configure-agent.mjs",
+    "import:pi-agent": "node scripts/import-pi-agent.mjs",
+    "grant:artifact-rbac": "node scripts/grant-artifact-rbac.mjs",
+    "demo:remote:artifact": "scripts/demo-remote-artifact.sh",
     "smoke": "node scripts/smoke.mjs",
     "smoke:curl": "scripts/curl-smoke.sh",
     "smoke:session": "node scripts/session-smoke.mjs",
