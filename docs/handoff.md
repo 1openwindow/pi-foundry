@@ -18,34 +18,30 @@ No wrapper repo is required for the default path.
 
 | Repo | Remote | Status |
 |---|---|---|
-| `~/repos/pi-foundry` | `https://github.com/1openwindow/pi-foundry` | Main template/runtime, private, clean/pushed. |
-| `~/repos/media-report-agent` | `https://github.com/1openwindow/media-report-agent` | Example existing Pi agent with azd-native adapter, private, clean/pushed. |
-| `~/repos/media-report-foundry` | `https://github.com/1openwindow/media-report-foundry` | Legacy/internal wrapper validation, private. Not user-facing. |
-| `~/repos/pi-foundry-official-invocations` | `https://github.com/1openwindow/pi-foundry-official-invocations` | Historical official Invocations deployment reference, private. |
+| `~/repos/pi-foundry` | `https://github.com/1openwindow/pi-foundry` | Main runtime/template/skill repo, private, clean/pushed. |
+| `~/repos/clean-pi-agent` | local only | Clean user-agent test fixture for azd-native deployment UX. |
 
 ## Known-good deployed agents
 
-### `media-report-agent`
+### `pi-agent`
 
 ```text
-Version: 3
+Version: 1
 Protocol: invocations
-Purpose: Demonstrates the azd-native in-repo adapter path from the original Pi agent repo.
+Purpose: Demonstrates the azd-native in-repo adapter path from the clean `~/repos/clean-pi-agent` repo.
 ```
 
 Known-good commands:
 
 ```bash
-cd ~/repos/media-report-agent
+cd ~/repos/clean-pi-agent
 node .azd/pi-foundry/doctor.mjs
-azd ai agent invoke media-report-agent \
+azd ai agent invoke pi-agent \
   --protocol invocations \
-  --version 3 \
+  --version 1 \
   --new-session \
   --timeout 900 \
   'Say exactly: ok'
-
-~/repos/pi-foundry/scripts/demo-remote-artifact.sh media-report-agent 3
 ```
 
 ### Historical/internal: `pi-foundry-official-invocations`
@@ -139,7 +135,6 @@ Then from the same repo:
 
 ```bash
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
-azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set ...
 node .azd/pi-foundry/doctor.mjs
 azd up
@@ -165,7 +160,7 @@ Last checked:
 
 ```text
 pi-foundry:                         validate 0 failed
-media-report-agent:                 adapter doctor 0 failed, git clean
+clean-pi-agent:                    adapter doctor 0 failed
 ```
 
 Expected non-blocking warnings:

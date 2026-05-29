@@ -91,9 +91,9 @@ Use this when the user has a local Pi agent and wants it on Foundry.
 Ask only for missing values:
 
 - Existing Pi agent path, default to current directory if it looks like a Pi agent.
-- Agent/deployment name, e.g. `media-report-agent`.
+- Agent/deployment name, e.g. `clean-pi-agent`.
 - ACR endpoint, e.g. `<registry>.azurecr.io`.
-- Runtime image, usually `<registry>.azurecr.io/pi-foundry-runtime:0.1.0`; set it as `PI_FOUNDRY_RUNTIME_IMAGE` in `azd env`.
+- Runtime image, usually provided by the adapter Dockerfile default. The current internal validation default is `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`.
 - Foundry/model values later, only when configuring deploy:
   - `PI_OPENAI_BASE_URL`
   - `PI_OPENAI_MODEL`
@@ -166,7 +166,6 @@ Typical values:
 ```bash
 azd env new <env-name>
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
-azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set ENABLE_DIAGNOSTICS 0

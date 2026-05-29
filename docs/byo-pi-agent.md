@@ -106,14 +106,14 @@ agent.manifest.yaml
 .azd/pi-foundry/postdeploy.mjs
 ```
 
-The adapter does not modify `.agents/skills/`, prompts, MCP config, demo workspace, or business code. Existing deployment files are skipped unless `--overwrite` is explicitly supplied.
+The adapter does not modify `.agents/skills/`, prompts, MCP config, demo workspace, or business code. The default Hosted Agent name in the template is `pi-agent`; customize `agent.yaml` and `agent.manifest.yaml` after init if you need a different hosted agent name. `agent.yaml` also contains a valid placeholder image (`example.azurecr.io/pi-agent:latest`) for schema validation. `azure.yaml` sets the Docker publish image to `pi-agent:latest`; azd supplies the actual published container image during deployment.
 
 ## Runtime image
 
-The adapter Dockerfile uses a runtime base image:
+The adapter Dockerfile uses a runtime base image. The current internal validation template defaults to:
 
 ```dockerfile
-ARG PI_FOUNDRY_RUNTIME_IMAGE=<registry>.azurecr.io/pi-foundry-runtime:0.1.0
+ARG PI_FOUNDRY_RUNTIME_IMAGE=crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0
 FROM ${PI_FOUNDRY_RUNTIME_IMAGE}
 
 WORKDIR /app
@@ -159,7 +159,6 @@ Typical setup:
 cd <existing-pi-agent-path>
 azd env new <env-name>
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
-azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set ENABLE_DIAGNOSTICS 0

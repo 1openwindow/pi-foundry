@@ -31,12 +31,12 @@ Complete:
 - Remote real pi invocation works
 - Remote session continuity works
 - Static website artifact publishing works
-- Azd-native in-repo adapter prototype works end-to-end with `media-report-agent` v3
+- Azd-native in-repo adapter prototype works end-to-end with `clean-pi-agent` deployed as `pi-agent` v1
 - Runtime base image built through ACR remote build: `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`
 
 Current known-good remote agent:
 
-- `media-report-agent` version `3`: validates the azd-native in-repo adapter story; deployed from the original `~/repos/media-report-agent` repo with `azd up` and no wrapper repo.
+- `pi-agent` version `1`: validates the azd-native in-repo adapter story; deployed from the clean `~/repos/clean-pi-agent` repo with `azd up` and no wrapper repo.
 
 Historical/internal validation agents:
 

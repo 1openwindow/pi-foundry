@@ -19,8 +19,8 @@ services:
       path: .azd/pi-foundry/Dockerfile
       context: .
       remoteBuild: true
-      buildArgs:
-        - PI_FOUNDRY_RUNTIME_IMAGE=${PI_FOUNDRY_RUNTIME_IMAGE}
+      image: pi-agent
+      tag: latest
     config:
       container:
         resources:

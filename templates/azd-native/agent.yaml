@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/ContainerAgent.yaml
 kind: hosted
-name: ${AZURE_ENV_NAME}
+name: pi-agent
 protocols:
   - protocol: invocations
     version: 1.0.0
-image: ${AZURE_CONTAINER_REGISTRY_ENDPOINT}/${AZURE_ENV_NAME}:latest
+image: example.azurecr.io/pi-agent:latest
 resources:
   cpu: "2"
   memory: 4Gi

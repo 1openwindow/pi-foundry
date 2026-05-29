@@ -58,10 +58,10 @@ scripts/import-pi-agent.mjs
 Validated on 2026-05-29:
 
 - Runtime image built with ACR remote build: `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`
-- Existing Pi agent repo adapted in place: `~/repos/media-report-agent`
-- Hosted Agent deployed with `azd up`: `media-report-agent` version `3`
+- Existing clean Pi agent repo adapted in place: `~/repos/clean-pi-agent`
+- Hosted Agent deployed with `azd up`: `pi-agent` version `1`
 - Remote invoke succeeded with real model: output `ok`, `mock: false`
-- Artifact demo succeeded and returned static website URLs under `media-report-agent/<date>/<request-id>/...`
+- Artifact demo succeeded and returned static website URLs under `clean-pi-agent/<date>/<request-id>/...`
 
 The key UX result is that the user stayed in the existing Pi agent repo and deployed with `azd up`; no wrapper repo was required.
 
@@ -84,7 +84,6 @@ Then configure environment values from the user's repo:
 
 ```bash
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
-azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 azd env set PI_MOCK 0
 azd env set REQUEST_TIMEOUT_MS 600000
 azd env set 'PI_ARGS=--mode rpc --no-session --provider foundry --model <model>'
@@ -100,7 +99,7 @@ azd up
 The prototype Dockerfile uses a runtime base image:
 
 ```dockerfile
-ARG PI_FOUNDRY_RUNTIME_IMAGE=ghcr.io/1openwindow/pi-foundry-runtime:0.1.0
+ARG PI_FOUNDRY_RUNTIME_IMAGE=crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0
 FROM ${PI_FOUNDRY_RUNTIME_IMAGE}
 ```
 

@@ -12,7 +12,6 @@
     "create:wrapper": "node scripts/create-wrapper.mjs",
     "copy:azd-env": "node scripts/copy-azd-env.mjs",
     "deploy:foundry": "node scripts/deploy-foundry.mjs",
-    "install:azd-adapter": "node scripts/install-azd-adapter.mjs",
     "import:pi-agent": "node scripts/import-pi-agent.mjs",
     "grant:artifact-rbac": "node scripts/grant-artifact-rbac.mjs",
     "demo:remote:artifact": "scripts/demo-remote-artifact.sh",

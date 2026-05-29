@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/AgentManifest.yaml
-name: ${AZURE_ENV_NAME}
-displayName: "${AZURE_ENV_NAME}"
+name: pi-agent
+displayName: "Pi Agent"
 description: >
   Foundry Hosted Agent deployment adapter for an existing Pi agent repo.
 metadata:
@@ -11,7 +11,7 @@ metadata:
     - pi
     - azd-native
 template:
-  name: ${AZURE_ENV_NAME}
+  name: pi-agent
   kind: hosted
   protocols:
     - protocol: invocations

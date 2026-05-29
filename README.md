@@ -14,7 +14,7 @@ azd up
 
 No wrapper repo is required for the default path. The user's existing Pi agent repo remains the source of truth; only deployment configuration is added. The pi-foundry runtime is supplied by a versioned base image instead of vendoring runtime source into the user's repo.
 
-This path has been validated end-to-end with `media-report-agent` v3 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`. See [docs/azd-native-ux.md](./docs/azd-native-ux.md) for the UX direction and [docs/runtime-image.md](./docs/runtime-image.md) for runtime image build/publish details.
+This path has been validated end-to-end with `clean-pi-agent` deployed as `pi-agent` v1 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`. See [docs/azd-native-ux.md](./docs/azd-native-ux.md) for the UX direction and [docs/runtime-image.md](./docs/runtime-image.md) for runtime image build/publish details.
 
 ## Runtime modes
 
@@ -100,17 +100,16 @@ For local development before the template is published as a standalone repo, use
 azd init --template ~/repos/pi-foundry/templates/azd-native . --environment my-agent
 ```
 
-Then configure `azd env` values, run the adapter doctor, and deploy:
+Then configure `azd env` values, run the adapter doctor, and deploy. The template's default Hosted Agent name is `pi-agent`; customize `agent.yaml` and `agent.manifest.yaml` after init if you need a different hosted agent name. `agent.yaml` includes a valid placeholder image for schema validation, and `azure.yaml` sets a valid Docker publish image; azd supplies the actual published container image during deployment.
 
 ```bash
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<registry>.azurecr.io'
-azd env set PI_FOUNDRY_RUNTIME_IMAGE '<registry>.azurecr.io/pi-foundry-runtime:0.1.0'
 # set Foundry + PI_* values
 node .azd/pi-foundry/doctor.mjs
 azd up
 ```
 
-This path expects a published pi-foundry runtime base image; build it locally with `npm run runtime:build` or remotely with `npm run runtime:acr-build`, then smoke locally with `npm run runtime:smoke` when Docker is available (see [docs/runtime-image.md](./docs/runtime-image.md)). This path has been validated end-to-end with `media-report-agent` v3 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`.
+This path expects a published pi-foundry runtime base image; build it locally with `npm run runtime:build` or remotely with `npm run runtime:acr-build`, then smoke locally with `npm run runtime:smoke` when Docker is available (see [docs/runtime-image.md](./docs/runtime-image.md)). This path has been validated end-to-end with `clean-pi-agent` deployed as `pi-agent` v1 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`.
 
 > Note: [STATUS.md](./STATUS.md) is an internal handoff file for known-good deployment environments. Template users should follow the generic README/docs and replace placeholders with their own Foundry, model, ACR, and storage values.
 
