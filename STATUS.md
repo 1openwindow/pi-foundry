@@ -1,7 +1,7 @@
 # pi-foundry Status
 
 > Internal handoff note. This file records one known-good development/deployment
-> environment and is not required for template users. Do not treat endpoint,
+> environment and is not required for users. Do not treat endpoint,
 > subscription, ACR, storage, model, or version values here as defaults for your
 > own BYO Pi Agent deployment.
 
@@ -9,7 +9,7 @@ Last updated: 2026-05-29
 
 ## Goal
 
-Run Pi as a Microsoft Foundry Hosted Agent and provide a reusable **Bring Your Own Pi Agent to Foundry** template.
+Run Pi as a Microsoft Foundry Hosted Agent and provide a reusable **Bring Your Own Pi Agent to Foundry** skill-managed adapter.
 
 The current recommended architecture is:
 
@@ -31,12 +31,12 @@ Complete:
 - Remote real pi invocation works
 - Remote session continuity works
 - Static website artifact publishing works
-- Azd-native in-repo adapter prototype works end-to-end with `clean-pi-agent` deployed as `pi-agent` v1
+- Earlier skill/azd-compatible in-repo adapter prototype worked end-to-end with `clean-pi-agent` deployed as `pi-agent` v1
 - Runtime base image built through ACR remote build: `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`
 
 Current known-good remote agent:
 
-- `pi-agent` version `1`: validates the azd-native in-repo adapter story; deployed from the clean `~/repos/clean-pi-agent` repo with `azd up` and no wrapper repo.
+- `pi-agent` version `1`: validates the earlier in-repo adapter story; deployed from the clean `~/repos/clean-pi-agent` repo with `azd up` and no wrapper repo.
 
 Historical/internal validation agents:
 
@@ -290,4 +290,4 @@ This is not a blocker; remote real invocation works.
 4. Upload/workspace ingestion is still not implemented.
 5. No concurrency limits yet.
 6. No explicit output truncation in the internal backend, though pi tools already truncate their own tool output.
-7. Multiple old remote versions exist; prefer the current azd-native deployment output version.
+7. Multiple old remote versions exist; prefer the current skill-managed deployment output version.

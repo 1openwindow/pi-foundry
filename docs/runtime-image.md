@@ -1,6 +1,6 @@
 # pi-foundry runtime image
 
-The azd-native adapter expects a versioned runtime base image. The user's repo should not vendor pi-foundry runtime source; it should use a thin Dockerfile:
+The skill-managed adapter expects a versioned runtime base image. The user's repo should not vendor pi-foundry runtime source; it should use a generated thin Dockerfile:
 
 ```dockerfile
 ARG PI_FOUNDRY_RUNTIME_IMAGE=ghcr.io/1openwindow/pi-foundry-runtime:0.1.0

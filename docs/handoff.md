@@ -4,12 +4,12 @@ Last updated: 2026-05-29
 
 ## Summary
 
-`pi-foundry` is now a runtime plus **azd-native in-repo adapter** for deploying existing Pi agents to Foundry.
+`pi-foundry` is now a runtime plus **skill-managed, azd-compatible in-repo adapter** for deploying existing Pi agents to Foundry.
 
 The user-facing direction is:
 
 ```text
-existing Pi agent repo -> thin azd adapter -> runtime base image -> azd up -> Foundry Hosted Agent
+existing Pi agent repo -> pi-foundry skill installs adapter -> runtime base image -> azd up -> Foundry Hosted Agent
 ```
 
 No wrapper repo is required for the default path.
@@ -18,8 +18,8 @@ No wrapper repo is required for the default path.
 
 | Repo | Remote | Status |
 |---|---|---|
-| `~/repos/pi-foundry` | `https://github.com/1openwindow/pi-foundry` | Main runtime/template/skill repo, private, clean/pushed. |
-| `~/repos/clean-pi-agent` | local only | Clean user-agent test fixture for azd-native deployment UX. |
+| `~/repos/pi-foundry` | `https://github.com/1openwindow/pi-foundry` | Main runtime/skill/adapter-bundle repo, private, clean/pushed. |
+| `~/repos/clean-pi-agent` | local only | Clean user-agent test fixture for skill-managed deployment UX. |
 
 ## Known-good deployed agents
 
@@ -28,7 +28,7 @@ No wrapper repo is required for the default path.
 ```text
 Version: 1
 Protocol: invocations
-Purpose: Demonstrates the azd-native in-repo adapter path from the clean `~/repos/clean-pi-agent` repo.
+Purpose: Demonstrates the earlier in-repo adapter validation from the clean `~/repos/clean-pi-agent` repo.
 ```
 
 Known-good commands:
@@ -134,7 +134,7 @@ azd up
 azd ai agent invoke <agent-name> --protocol invocations --version <version> --new-session --timeout 900 'Say exactly: ok'
 ```
 
-The legacy wrapper-repo walkthroughs have been removed; the supported path is the azd-native in-repo adapter.
+The legacy wrapper-repo walkthroughs have been removed; the supported path is the skill-managed in-repo adapter.
 
 Demo script:
 
@@ -162,7 +162,7 @@ Expected non-blocking warnings:
 - Non-streaming `azd ai agent invoke` through official mode now returns backend JSON, not raw SSE lines.
 - Streaming clients still receive `token` and `done` SSE events.
 - Artifact publishing uses Azure Storage Static Website and requires `Storage Blob Data Contributor` for agent identities.
-- The azd-native adapter's postdeploy automation grants artifact RBAC when artifact static-web publishing is enabled.
+- The adapter's postdeploy automation grants artifact RBAC when artifact static-web publishing is enabled.
 
 ## Things intentionally not done yet
 

@@ -99,7 +99,7 @@ async function main() {
     "docs/byo-pi-agent.md",
     "docs/demo-checklist.md",
     "docs/handoff.md",
-    "docs/azd-native-ux.md",
+    "docs/skill-managed-ux.md",
     "docs/runtime-image.md",
     "docs/skill-adapter-design.md",
     "src/runtime/artifacts.mjs",

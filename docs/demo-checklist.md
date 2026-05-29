@@ -139,11 +139,13 @@ Expected:
 - postdeploy prints the invoke command and grants artifact RBAC when configured
 - no wrapper repo is involved
 
-Known-good remote agent from earlier validation:
+Earlier validation used:
 
 ```text
 pi-agent v1
 ```
+
+Current skill-managed installs infer the agent name from the repo directory unless the user overrides it.
 
 ## Demo 6: invoke the deployed agent
 

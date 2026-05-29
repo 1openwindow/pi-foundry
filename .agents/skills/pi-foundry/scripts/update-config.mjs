@@ -41,7 +41,12 @@ async function exists(path) {
 }
 
 function defaultConfig() {
-  return `version: 1
+  return `# Managed by the pi-foundry skill.
+# High-level deployment config for this BYO Pi agent.
+# Prefer changing this through the pi-foundry skill.
+# If edited manually, run:
+#   node .azd/pi-foundry/render.mjs
+version: 1
 
 agent:
   name: CHANGE_ME

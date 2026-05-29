@@ -15,7 +15,7 @@ Developers working in vibe-coding flows expect to stay inside their own repo and
 "Deploy this Pi agent to Foundry."
 ```
 
-They should not need to reason about an azd template, generated Dockerfiles, or Foundry agent YAML.
+They should not need to reason about installation mechanics, generated Dockerfiles, or Foundry agent YAML.
 
 ## UX vision
 

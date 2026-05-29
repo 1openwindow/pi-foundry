@@ -1,5 +1,7 @@
 # pi-foundry adapter
 
+> Managed by the pi-foundry skill. This directory contains deploy-time adapter files copied from the skill adapter bundle.
+
 This directory contains the isolated pi-foundry BYO adapter used by `azd`.
 
 It intentionally does not contain pi-foundry runtime source code. The runtime comes from the `PI_FOUNDRY_RUNTIME_IMAGE` Docker build argument in the generated `Dockerfile`, defaulting to a versioned pi-foundry runtime image.

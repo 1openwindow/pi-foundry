@@ -1,11 +1,11 @@
 ---
 name: pi-foundry
-description: Helps initialize, validate, deploy, invoke, and troubleshoot an existing Pi agent on Microsoft Foundry Hosted Agents using the pi-foundry azd-native in-repo adapter. Use when the user wants to add Foundry deployment to a local Pi agent repo, configure azd/PI_* settings, run adapter doctor, deploy with azd up, verify remote invocations, or debug deployment, session, streaming, and artifact issues.
+description: Helps initialize, validate, deploy, invoke, and troubleshoot an existing Pi agent on Microsoft Foundry Hosted Agents using the pi-foundry skill-managed azd-compatible in-repo adapter. Use when the user wants to add Foundry deployment to a local Pi agent repo, configure azd/PI_* settings, run adapter doctor, deploy with azd up, verify remote invocations, or debug deployment, session, streaming, and artifact issues.
 ---
 
 # Deploy Pi Agent to Foundry
 
-Use this skill as the UX/onboarding/control layer for the `pi-foundry` azd-native adapter. The user should be able to say things like:
+Use this skill as the UX/onboarding/control layer for the `pi-foundry` skill-managed adapter. The user should be able to say things like:
 
 - "把我这个 Pi agent 部署到 Foundry。"
 - "帮我给当前 repo 加 Foundry 部署。"
@@ -343,23 +343,23 @@ Check ACR permissions for Foundry identities. Run `node .azd/pi-foundry/doctor.m
 
 ### User asks whether to create a wrapper repo
 
-Default answer: no. The user-facing product path is azd-native in-repo deployment. A wrapper repo creates source-of-truth confusion and is not part of the recommended UX.
+Default answer: no. The user-facing product path is skill-managed in-repo deployment. A wrapper repo creates source-of-truth confusion and is not part of the recommended UX.
 
 ## Documentation to consult when needed
 
 Read these project docs when the user asks for details or when troubleshooting needs more context:
 
 - `README.md` — top-level quickstart and runtime modes
-- `docs/azd-native-ux.md` — azd-native in-repo adapter UX direction
+- `docs/skill-managed-ux.md` — skill-managed adapter UX direction
 - `docs/runtime-image.md` — runtime base image build/smoke/publish flow
 - `docs/artifacts.md` — artifact publishing details
-- `docs/demo-checklist.md` — current azd-native demo commands
+- `docs/demo-checklist.md` — current skill-managed demo commands
 - `DEPLOY.md` — remote Foundry invocation and deployment troubleshooting
 - `docs/handoff.md` — current known-good internal deployment state
 
 ## Communication style
 
-- Keep the user on the azd-native happy path.
+- Keep the user on the skill-managed happy path.
 - State assumptions before running mutating commands.
 - Ask for missing names/endpoints/paths only when necessary.
 - Translate tool output into concrete next actions.

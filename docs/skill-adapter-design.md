@@ -9,7 +9,7 @@ render materializes it
 azd deploys it
 ```
 
-There is no canonical azd template in the primary product path. The skill owns the canonical adapter bundle and installs an azd-compatible deployment adapter into the user's existing Pi agent repo.
+There is no separate canonical install template in the primary product path. The skill owns the canonical adapter bundle and installs an azd-compatible deployment adapter into the user's existing Pi agent repo.
 
 ## Product roles
 
@@ -67,9 +67,9 @@ azure.yaml
 
 Generated files are not the user editing surface.
 
-## Why no canonical template?
+## Why no separate install template?
 
-The user experience is vibe-coding and skill-driven. Users should not think in terms of installing and editing a template. They should ask the pi-foundry skill to add Foundry deployment to their current repo.
+The user experience is vibe-coding and skill-driven. Users should not think in terms of installing and editing deployment scaffolding. They should ask the pi-foundry skill to add Foundry deployment to their current repo.
 
 The skill still follows azd conventions:
 
@@ -78,7 +78,7 @@ The skill still follows azd conventions:
 - it uses `azd env`
 - it relies on `azd package`, `azd deploy`, and the `azure.ai.agents` extension
 
-But the install mechanism is skill-owned, not template-owned.
+But the install mechanism is skill-owned, not scaffold-owned.
 
 ## Lifecycle
 

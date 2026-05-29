@@ -1,6 +1,6 @@
 # pi-foundry
 
-A runtime and azd-native adapter for deploying an existing Pi agent to Microsoft Foundry Hosted Agents.
+A runtime and skill-managed adapter for deploying an existing Pi agent to Microsoft Foundry Hosted Agents.
 
 You bring Pi skills, MCP servers, tools, prompts, model/provider configuration, and environment variables. `pi-foundry` provides the Foundry Invocations bridge, Pi RPC lifecycle, session mapping, streaming, Docker packaging, health/readiness endpoints, and artifact delivery.
 
@@ -16,7 +16,7 @@ azd up
 
 No wrapper repo is required for the default path. The user's existing Pi agent repo remains the source of truth; only deployment configuration is added. The pi-foundry runtime is supplied by a versioned base image instead of vendoring runtime source into the user's repo.
 
-This path has been validated end-to-end with `clean-pi-agent` deployed as `pi-agent` v1 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`. See [docs/skill-adapter-design.md](./docs/skill-adapter-design.md) for the skill/adapter relationship, [docs/azd-native-ux.md](./docs/azd-native-ux.md) for the UX direction, and [docs/runtime-image.md](./docs/runtime-image.md) for runtime image build/publish details.
+This path has been validated end-to-end with `clean-pi-agent` deployed as `pi-agent` v1 using `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`. See [docs/skill-adapter-design.md](./docs/skill-adapter-design.md) for the skill/adapter relationship, [docs/skill-managed-ux.md](./docs/skill-managed-ux.md) for the UX direction, and [docs/runtime-image.md](./docs/runtime-image.md) for runtime image build/publish details.
 
 ## Repository layout
 
@@ -83,7 +83,7 @@ Customize the agent layer:
 - Add third-party credentials such as `GITHUB_TOKEN` or `JIRA_TOKEN` through your deployment environment.
 - Write generated downloadable outputs under the artifact directory and optionally provide `artifact-manifest.json`.
 
-The common azd-native path should not require changing user business code, skills, prompts, or MCP config. It adds a small root footprint (`azure.yaml`, `.dockerignore`) plus isolated adapter files under `.azd/pi-foundry/`. If an existing `azure.yaml` is not pi-foundry-managed, the skill requires explicit confirmation before replacing it and backs it up first. The skill creates the human-facing pi-foundry deployment source of truth at `.azd/pi-foundry/pi-foundry.yaml`; lower-level platform YAML is generated.
+The common skill-managed path should not require changing user business code, skills, prompts, or MCP config. It adds a small root footprint (`azure.yaml`, `.dockerignore`) plus isolated adapter files under `.azd/pi-foundry/`. If an existing `azure.yaml` is not pi-foundry-managed, the skill requires explicit confirmation before replacing it and backs it up first. The skill creates the human-facing pi-foundry deployment source of truth at `.azd/pi-foundry/pi-foundry.yaml`; lower-level platform YAML is generated.
 
 ### Agentic onboarding skill
 

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Managed by the pi-foundry skill.
+// This deploy-time adapter script is copied from the pi-foundry skill adapter bundle.
+// Do not edit directly unless debugging the adapter.
+// To update, run the pi-foundry skill migration flow.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 

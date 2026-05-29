@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// Managed by the pi-foundry skill.
+// This deploy-time adapter script is copied from the pi-foundry skill adapter bundle.
+// Do not edit directly unless debugging the adapter.
+// To update, run the pi-foundry skill migration flow.
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { execFileSync } from "node:child_process";

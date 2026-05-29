@@ -194,6 +194,7 @@ async function checkRepoShape() {
     "docs/byo-pi-agent.md",
     "docs/demo-checklist.md",
     "docs/handoff.md",
+    "docs/skill-managed-ux.md",
     "docs/skill-adapter-design.md",
     "src/runtime/artifacts.mjs",
     "scripts/grant-artifact-rbac.mjs",
