@@ -21,6 +21,15 @@ if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
   process.exit(args.length === 0 ? 2 : 0);
 }
 
+function fail(message) {
+  console.error(`pi-foundry azd-agent: ${message}`);
+  process.exit(1);
+}
+
+function requireFile(path, hint) {
+  if (!existsSync(path)) fail(`${path} is missing. ${hint}`);
+}
+
 function snapshot(path) {
   return existsSync(path) ? { existed: true, content: readFileSync(path, "utf8") } : { existed: false, content: undefined };
 }
@@ -30,7 +39,17 @@ function restore(path, state) {
   else if (existsSync(path)) unlinkSync(path);
 }
 
+let cleanup = () => {};
+let cleaned = false;
+function cleanupOnce() {
+  if (cleaned) return;
+  cleaned = true;
+  cleanup();
+}
+
 function materializeRootAgentFiles() {
+  requireFile(AGENT_DEFINITION_PATH, "Run: node .azd/pi-foundry/render.mjs");
+  requireFile(AGENT_MANIFEST_PATH, "Run: node .azd/pi-foundry/render.mjs");
   const rootAgent = snapshot(ROOT_AGENT_PATH);
   const rootManifest = snapshot(ROOT_MANIFEST_PATH);
   writeFileSync(ROOT_AGENT_PATH, readFileSync(AGENT_DEFINITION_PATH, "utf8"), "utf8");
@@ -41,7 +60,14 @@ function materializeRootAgentFiles() {
   };
 }
 
-let cleanup = () => {};
+for (const [signal, exitCode] of [["SIGINT", 130], ["SIGTERM", 143]]) {
+  process.on(signal, () => {
+    cleanupOnce();
+    process.exit(exitCode);
+  });
+}
+
+requireFile(AGENT_DEFINITION_PATH, "Run: node .azd/pi-foundry/render.mjs");
 if (args[0] === "deploy") cleanup = materializeRootAgentFiles();
 
 try {
@@ -60,5 +86,5 @@ try {
     process.exitCode = result.status ?? 0;
   }
 } finally {
-  cleanup();
+  cleanupOnce();
 }

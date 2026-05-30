@@ -37,6 +37,7 @@ Complete:
 
 Current known-good remote agent:
 
+- `clean-pi-agent` version `5`: validates the current skill-first natural-language UX with generated agent YAML kept under `.azd/pi-foundry/generated/`. A real `pi --skill` conversation installed the adapter, configured env values without printing secrets, ran direct `azd up --no-prompt`, invoked `Say exactly: ok` with `mock: false`, and validated static website artifacts with HTTP 200. No root `agent.yaml` or `agent.manifest.yaml` persisted after deployment.
 - `clean-pi-agent` version `4`: validates the current skill-managed adapter story with generated agent YAML kept under `.azd/pi-foundry/generated/`. The adapter workflow uses `.azd/pi-foundry/azd-agent.mjs` to pass `AGENT_DEFINITION_PATH` and temporarily materialize root agent files only during `azd deploy`. Remote invoke returned `ok` with `mock: false`; static website artifact publishing returned HTTP 200 for `index.html`.
 - `clean-pi-agent` version `3`: validates the earlier skill-managed adapter story before the root-agent-file cleanup. Remote invoke returned `ok` with `mock: false`; static website artifact publishing returned HTTP 200 for `index.html`.
 - `pi-agent` version `1`: validates the earlier in-repo adapter story; deployed from the clean `~/repos/clean-pi-agent` repo with `azd up` and no wrapper repo.
@@ -271,7 +272,7 @@ azd ai agent doctor --no-prompt
 
 ## Current doctor state
 
-Last checked during the `clean-pi-agent` version 4 E2E:
+Last checked during the `clean-pi-agent` version 5 natural-language E2E:
 
 ```text
 pi-foundry adapter doctor: 39 passed, 1 warned, 0 failed

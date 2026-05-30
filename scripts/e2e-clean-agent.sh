@@ -15,12 +15,13 @@ Options:
   --remote               Run real azd up + remote invoke + artifact validation.
   --env-file <path>      Dotenv file used to configure azd env in --remote mode.
                          Secrets are set into azd env but never printed.
+  --yes                  Required with --remote; acknowledges a new remote agent version may be deployed.
   --keep                 Keep the temporary adapted repo and print its path.
   -h, --help             Show this help.
 
 Examples:
   scripts/e2e-clean-agent.sh
-  scripts/e2e-clean-agent.sh --remote --env-file ~/repos/pi-foundry/.azure/pi-foundry-local/.env
+  scripts/e2e-clean-agent.sh --remote --yes --env-file ~/repos/pi-foundry/.azure/pi-foundry-local/.env
 EOF
 }
 
@@ -30,6 +31,7 @@ skill_dir="$repo_root/.agents/skills/pi-foundry"
 agent_name="clean-pi-agent"
 remote=0
 keep=0
+yes=0
 env_file=""
 
 while [[ $# -gt 0 ]]; do
@@ -39,6 +41,7 @@ while [[ $# -gt 0 ]]; do
     --agent-name) agent_name=${2:?missing value for --agent-name}; shift 2 ;;
     --remote) remote=1; shift ;;
     --env-file) env_file=${2:?missing value for --env-file}; shift 2 ;;
+    --yes) yes=1; shift ;;
     --keep) keep=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unexpected argument: $1" >&2; usage >&2; exit 2 ;;
@@ -51,6 +54,10 @@ if [[ ! -d "$source_repo" ]]; then
 fi
 if [[ ! -f "$skill_dir/scripts/install-adapter.mjs" ]]; then
   echo "pi-foundry skill not found: $skill_dir" >&2
+  exit 1
+fi
+if [[ $remote -eq 1 && $yes -ne 1 ]]; then
+  echo "--remote deploys a new Foundry agent version. Re-run with --yes to continue." >&2
   exit 1
 fi
 if [[ $remote -eq 1 && -z "$env_file" ]]; then
