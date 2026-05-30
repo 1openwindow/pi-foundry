@@ -103,61 +103,10 @@ if [[ $remote -eq 0 ]]; then
 fi
 
 echo "== Configure azd env from env file (secrets redacted) =="
-python3 - "$env_file" "$agent_name" <<'PY'
-from pathlib import Path
-import re
-import subprocess
-import sys
-
-env_file = Path(sys.argv[1])
-agent_name = sys.argv[2]
-values = {}
-for raw in env_file.read_text(errors="replace").splitlines():
-    line = raw.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    key, value = line.split("=", 1)
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
-        value = value[1:-1]
-    values[key] = value
-
-keys = [
-    "AZURE_SUBSCRIPTION_ID",
-    "AZURE_TENANT_ID",
-    "AZURE_LOCATION",
-    "FOUNDRY_PROJECT_ENDPOINT",
-    "AZURE_AI_PROJECT_ID",
-    "AZURE_CONTAINER_REGISTRY_ENDPOINT",
-    "PI_MOCK",
-    "PI_ARGS",
-    "PI_OPENAI_BASE_URL",
-    "PI_OPENAI_MODEL",
-    "PI_OPENAI_API_KEY",
-    "REQUEST_TIMEOUT_MS",
-    "ENABLE_DIAGNOSTICS",
-    "ARTIFACT_PUBLISH_MODE",
-    "ARTIFACT_STORAGE_ACCOUNT",
-    "ARTIFACT_STATIC_WEB_ENDPOINT",
-    "ARTIFACT_STATIC_WEB_CONTAINER",
-]
-
-def set_env(key, value):
-    subprocess.run(["azd", "env", "set", f"{key}={value}"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    if re.search(r"(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)", key, re.I):
-        print(f"configured {key}=<redacted>")
-    else:
-        print(f"configured {key}")
-
-for key in keys:
-    if key not in values or values[key] == "":
-        continue
-    value = values[key]
-    if key == "ARTIFACT_STATIC_WEB_CONTAINER":
-        value = "$web"
-    set_env(key, value)
-
-set_env("ARTIFACT_BLOB_PREFIX", agent_name)
-PY
+node "$skill_dir/scripts/configure-env.mjs" \
+  --env-name "$agent_name" \
+  --agent-name "$agent_name" \
+  --from-env-file "$env_file"
 
 echo "== Doctor =="
 node .azd/pi-foundry/doctor.mjs

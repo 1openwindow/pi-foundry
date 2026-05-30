@@ -22,7 +22,7 @@ Use `azd env` for deployment environment values. Do not commit secrets.
 - `ARTIFACT_STORAGE_ACCOUNT`
 - `ARTIFACT_STATIC_WEB_ENDPOINT`
 - `ARTIFACT_STATIC_WEB_CONTAINER` — usually `$web`. Set it with `azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'` or `configure-env.mjs`; do not store an over-escaped value such as `\\$web`.
-- `ARTIFACT_BLOB_PREFIX`
+- `ARTIFACT_BLOB_PREFIX` — should normally match the deployed agent name in the skill-managed flow. Do not copy another agent's prefix when reusing an existing azd `.env`; use `configure-env.mjs --from-env-file ... --agent-name <agent-name>` so the prefix is reset.
 
 ## Reserved prefixes
 

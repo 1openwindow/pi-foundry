@@ -104,7 +104,7 @@ Rules:
 - If the repo already has a non-pi-foundry `azure.yaml`, ask before replacement; use `--replace-azure` only after explicit confirmation.
 - Use `update-config.mjs` instead of manually editing `.azd/pi-foundry/pi-foundry.yaml` when changing supported fields.
 - Use `merge-dockerignore.mjs` when a user repo already has a `.dockerignore` that needs a safe pi-foundry managed block.
-- Use `configure-env.mjs` or `azd env set`; never write secrets to YAML or code. Prefer `azd env set KEY=value` form for values such as `PI_ARGS=--mode ...` and `ARTIFACT_STATIC_WEB_CONTAINER=$web` so the shell/azd parser does not treat them as flags or add extra escaping.
+- Use `configure-env.mjs` or `azd env set`; never write secrets to YAML or code. Prefer `azd env set KEY=value` form for values such as `PI_ARGS=--mode ...` and `ARTIFACT_STATIC_WEB_CONTAINER=$web` so the shell/azd parser does not treat them as flags or add extra escaping. When reusing another azd `.env`, use `configure-env.mjs --from-env-file <path> --agent-name <agent-name>` instead of blindly copying all keys; do not copy `AGENT_*` outputs or another agent's `ARTIFACT_BLOB_PREFIX`.
 - Use `migrate-adapter.mjs` for later adapter updates instead of rerunning `azd init`.
 - Use adapter `render.mjs --check` and `doctor.mjs` to validate generated files and environment state.
 - If a script does not support the requested change, make the smallest targeted edit to `pi-foundry.yaml`, then run `node .azd/pi-foundry/render.mjs`.
@@ -233,6 +233,15 @@ azd env set ARTIFACT_STORAGE_ACCOUNT '<storage-account>'
 azd env set ARTIFACT_STATIC_WEB_ENDPOINT 'https://<storage-account>.<zone>.web.core.windows.net'
 azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'
 azd env set ARTIFACT_BLOB_PREFIX '<agent-name>'
+```
+
+When copying values from an existing local azd env, prefer the deterministic helper so the artifact prefix is reset to the current agent name and secrets are redacted:
+
+```bash
+node <skill>/scripts/configure-env.mjs \
+  --env-name <agent-name> \
+  --agent-name <agent-name> \
+  --from-env-file <path-to-existing-azd-env-file>
 ```
 
 Warn the user:

@@ -47,6 +47,10 @@ function envHas(values, name) {
   return typeof values[name] === "string" && values[name].length > 0;
 }
 
+function configuredAgentName(configText) {
+  return configText?.match(/^\s*name:\s*["']?([^"'\s]+)["']?\s*$/m)?.[1];
+}
+
 function staticWebContainerStatus(value) {
   if (!value) return { ok: false, message: "artifact static-web mode missing ARTIFACT_STATIC_WEB_CONTAINER" };
   const match = value.match(/^(\\*)\$web$/);
@@ -83,9 +87,8 @@ async function main() {
   }
 
   const configText = await readOptional(".azd/pi-foundry/pi-foundry.yaml");
+  const agentName = configuredAgentName(configText);
   if (configText) {
-    const nameMatch = configText.match(/^\s*name:\s*['"]?([^'"\s]+)['"]?\s*$/m);
-    const agentName = nameMatch?.[1];
     if (agentName && agentName !== "CHANGE_ME") pass(`pi-foundry agent.name is ${agentName}`);
     else fail("pi-foundry agent.name is not configured; use the pi-foundry skill to set it before deployment");
   }
@@ -171,6 +174,9 @@ async function main() {
       for (const name of ["ARTIFACT_STORAGE_ACCOUNT", "ARTIFACT_STATIC_WEB_ENDPOINT", "ARTIFACT_BLOB_PREFIX"]) {
         if (envHas(values, name)) pass(`artifact env has ${name}`);
         else warn(`artifact static-web mode missing ${name}`);
+      }
+      if (agentName && envHas(values, "ARTIFACT_BLOB_PREFIX") && values.ARTIFACT_BLOB_PREFIX !== agentName && process.env.PI_FOUNDRY_ALLOW_ARTIFACT_PREFIX_MISMATCH !== "1") {
+        fail(`ARTIFACT_BLOB_PREFIX (${values.ARTIFACT_BLOB_PREFIX}) should match agent name (${agentName}) for skill-managed deployments; set it with: azd env set ARTIFACT_BLOB_PREFIX=${agentName}`);
       }
       const container = staticWebContainerStatus(values.ARTIFACT_STATIC_WEB_CONTAINER);
       if (container.ok) pass(container.message);
