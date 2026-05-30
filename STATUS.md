@@ -5,7 +5,7 @@
 > subscription, ACR, storage, model, or version values here as defaults for your
 > own BYO Pi Agent deployment.
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 
 ## Goal
 
@@ -33,9 +33,11 @@ Complete:
 - Static website artifact publishing works
 - Earlier skill/azd-compatible in-repo adapter prototype worked end-to-end with `clean-pi-agent` deployed as `pi-agent` v1
 - Runtime base image built through ACR remote build: `crce6hg4ngzj3as.azurecr.io/pi-foundry-runtime:0.1.0`
+- Current skill-managed adapter install path works end-to-end from a clean `~/repos/clean-pi-agent` repo with direct `azd up --no-prompt`, no wrapper repo, no `AGENT_DEFINITION_PATH` workaround, and no `PI_FOUNDRY_ALLOW_*` workaround.
 
 Current known-good remote agent:
 
+- `clean-pi-agent` version `3`: validates the current skill-managed adapter story with generated root `agent.yaml`/`agent.manifest.yaml` compatibility mirrors. Remote invoke returned `ok` with `mock: false`; static website artifact publishing returned HTTP 200 for `index.html`.
 - `pi-agent` version `1`: validates the earlier in-repo adapter story; deployed from the clean `~/repos/clean-pi-agent` repo with `azd up` and no wrapper repo.
 
 Historical/internal validation agents:
@@ -132,50 +134,58 @@ Current real remote settings:
 
 ```bash
 PI_MOCK=0
-PI_ARGS="--mode rpc --no-session --provider foundry --model gpt-5.4-mini"
-PI_OPENAI_BASE_URL="https://zihch-test-wus3-resource.cognitiveservices.azure.com/openai/v1"
-PI_OPENAI_MODEL="gpt-5.4-mini"
+PI_ARGS="--mode rpc --no-session --provider foundry --model gpt-5.4"
+PI_OPENAI_BASE_URL="https://zihch-eus2.cognitiveservices.azure.com/openai/v1"
+PI_OPENAI_MODEL="gpt-5.4"
 PI_OPENAI_API_KEY=<stored in local azd env, not in repo>
 ```
 
 Important endpoint finding:
 
-- `https://zihch-test-wus3-resource.services.ai.azure.com/openai/v1` works locally but failed from Hosted Agent sandbox with `fetch failed`.
-- `https://zihch-test-wus3-resource.cognitiveservices.azure.com/openai/v1` works from Hosted Agent sandbox and is the current deployed endpoint.
+- Hosted Agent sandbox should use the account-level `*.cognitiveservices.azure.com/openai/v1` endpoint for the OpenAI-compatible model provider.
+- Project-scoped `*.services.ai.azure.com/openai/v1` endpoints may fail from the Hosted Agent sandbox with `fetch failed` in some environments.
 
 ## azd environment
 
-Environment name:
+Environment name in this repo:
 
 ```bash
 pi-foundry-local
 ```
 
-Important azd values:
+Important current known-good azd values:
 
 ```bash
-AZURE_SUBSCRIPTION_ID="fcffb5eb-7227-412b-b730-094a0dc8d815"
-AZURE_TENANT_ID="d678d95f-6390-442d-a5db-742082adc9cf"
-AZURE_LOCATION="westus3"
-FOUNDRY_PROJECT_ENDPOINT="https://zihch-test-wus3-resource.services.ai.azure.com/api/projects/zihch-test-wus3"
-AZURE_AI_PROJECT_ID="/subscriptions/fcffb5eb-7227-412b-b730-094a0dc8d815/resourceGroups/rg-zihch-test/providers/Microsoft.CognitiveServices/accounts/zihch-test-wus3-resource/projects/zihch-test-wus3"
-AZURE_CONTAINER_REGISTRY_ENDPOINT="zihchpifoundry.azurecr.io"
+AZURE_SUBSCRIPTION_ID="1756abc0-3554-4341-8d6a-46674962ea19"
+AZURE_TENANT_ID="72f988bf-86f1-41af-91ab-2d7cd011db47"
+AZURE_LOCATION="eastus2"
+FOUNDRY_PROJECT_ENDPOINT="https://zihch-eus2.services.ai.azure.com/api/projects/zihch-eus2"
+AZURE_AI_PROJECT_ID="/subscriptions/1756abc0-3554-4341-8d6a-46674962ea19/resourceGroups/zihch-test-eus2/providers/Microsoft.CognitiveServices/accounts/zihch-eus2/projects/zihch-eus2"
+AZURE_CONTAINER_REGISTRY_ENDPOINT="crce6hg4ngzj3as.azurecr.io"
+PI_ARGS="--mode rpc --no-session --provider foundry --model gpt-5.4"
+PI_OPENAI_BASE_URL="https://zihch-eus2.cognitiveservices.azure.com/openai/v1"
+PI_OPENAI_MODEL="gpt-5.4"
+ARTIFACT_PUBLISH_MODE="static-web"
+ARTIFACT_STORAGE_ACCOUNT="pifoundryeus2web"
+ARTIFACT_STATIC_WEB_ENDPOINT="https://pifoundryeus2web.z20.web.core.windows.net"
+ARTIFACT_STATIC_WEB_CONTAINER="$web"
+ARTIFACT_BLOB_PREFIX="clean-pi-agent"
 ```
 
-The secret `PI_OPENAI_API_KEY` is stored in `.azure/pi-foundry-local/.env`. The `.azure/` directory is ignored and should not be committed.
+The secret `PI_OPENAI_API_KEY` is stored in local `.azure/<env>/.env` files. The `.azure/` directory is ignored and should not be committed.
 
 ## Azure resources
 
 Existing Foundry endpoint supplied by user:
 
 ```text
-https://zihch-test-wus3-resource.services.ai.azure.com/api/projects/zihch-test-wus3
+https://zihch-eus2.services.ai.azure.com/api/projects/zihch-eus2
 ```
 
-Container registry created during this work:
+Container registry used by the current runtime image:
 
 ```text
-zihchpifoundry.azurecr.io
+crce6hg4ngzj3as.azurecr.io
 ```
 
 ACR permissions were required for Foundry image pulls. Assigned ACR pull/read roles to:
@@ -219,20 +229,20 @@ Official SDK local smoke:
 npm run smoke
 ```
 
-Remote deploy:
+Remote deploy from an adapted user repo:
 
 ```bash
-azd deploy --no-prompt
+azd up --no-prompt
 ```
 
-Remote invocation, known-good real version:
+Remote invocation, current known-good skill-managed version:
 
 ```bash
-azd ai agent invoke pi-foundry \
+azd ai agent invoke clean-pi-agent \
   --protocol invocations \
-  --version 4 \
+  --version 3 \
   --new-session \
-  --timeout 600 \
+  --timeout 900 \
   'Say exactly: ok'
 ```
 
@@ -260,19 +270,11 @@ azd ai agent doctor --no-prompt
 
 ## Current doctor state
 
-Last checked after version 4 deployment:
+Last checked during the `clean-pi-agent` version 3 E2E:
 
 ```text
-11 passed, 0 failed, 3 skipped, 1 warned
+pi-foundry adapter doctor: 42 passed, 0 warned, 0 failed
 ```
-
-Warning:
-
-```text
-Agent identity role assignments: could not list role assignments
-```
-
-This is not a blocker; remote real invocation works.
 
 ## Important implementation notes
 

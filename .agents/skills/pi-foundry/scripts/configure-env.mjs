@@ -41,7 +41,10 @@ function tryRun(command, args) {
 
 function azdSet(name, value, { secret = false } = {}) {
   if (value === undefined || value === "") return;
-  run("azd", ["env", "set", name, String(value)]);
+  // Use KEY=value form so values that begin with "--" (for example PI_ARGS)
+  // or contain shell-sensitive characters (for example $web) are passed to azd
+  // as values instead of being parsed as flags.
+  run("azd", ["env", "set", `${name}=${String(value)}`]);
   console.log(`configured ${name}${secret ? "=<secret>" : ""}`);
 }
 

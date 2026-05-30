@@ -144,9 +144,36 @@ async function main() {
   if (compareNodeVersion(nodeVersion, "22.19.0") >= 0) pass(`Node ${nodeVersion} satisfies >=22.19.0`);
   else fail(`Node ${nodeVersion} is too old; expected >=22.19.0`);
 
-  const installSmoke = commandResult("bash", ["-lc", "repo=$PWD; tmp=$(mktemp -d); cd \"$tmp\" && node \"$repo/.agents/skills/pi-foundry/scripts/install-adapter.mjs\" --agent-name hello-world-agent && node .azd/pi-foundry/render.mjs --check"], { cwd: "." });
-  if (installSmoke.ok) pass("pi-foundry skill can install adapter assets and render generated YAML");
+  const installSmoke = commandResult("bash", ["-lc", `
+    set -euo pipefail
+    repo=$PWD
+    tmp=$(mktemp -d)
+    cd "$tmp"
+    node "$repo/.agents/skills/pi-foundry/scripts/install-adapter.mjs" --agent-name hello-world-agent
+    cmp -s agent.yaml .azd/pi-foundry/generated/agent.yaml
+    cmp -s agent.manifest.yaml .azd/pi-foundry/generated/agent.manifest.yaml
+    node .azd/pi-foundry/render.mjs --check
+    python3 -c "from pathlib import Path; p=Path('azure.yaml'); p.write_text('\\n'.join(line for line in p.read_text().splitlines() if not line.startswith('#')) + '\\n')"
+    node .azd/pi-foundry/render.mjs
+    node .azd/pi-foundry/render.mjs --check
+  `], { cwd: "." });
+  if (installSmoke.ok) pass("pi-foundry skill can install adapter assets, render root agent mirrors, and recover normalized azure.yaml");
   else fail("pi-foundry skill install smoke failed");
+
+  const rootAgentGuard = commandResult("bash", ["-lc", `
+    set -euo pipefail
+    repo=$PWD
+    tmp=$(mktemp -d)
+    cd "$tmp"
+    printf 'name: existing-user-agent\n' > agent.yaml
+    if node "$repo/.agents/skills/pi-foundry/scripts/install-adapter.mjs" --agent-name hello-world-agent >out.log 2>&1; then
+      cat out.log
+      exit 1
+    fi
+    grep -q 'agent.yaml already exists and is not pi-foundry-generated' out.log
+  `], { cwd: "." });
+  if (rootAgentGuard.ok) pass("pi-foundry install refuses to overwrite non-generated root agent.yaml");
+  else fail("pi-foundry root agent.yaml overwrite guard failed");
 
   const envExample = await readOptional(".env.example");
   if (envExample) {

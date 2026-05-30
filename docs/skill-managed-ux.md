@@ -51,11 +51,15 @@ The skill creates the high-level deployment config from user/repo intent:
 
 ```text
 azure.yaml
+agent.yaml
+agent.manifest.yaml
 .azd/pi-foundry/Dockerfile
 .azd/pi-foundry/pi-foundry.lock.yaml
 .azd/pi-foundry/generated/agent.yaml
 .azd/pi-foundry/generated/agent.manifest.yaml
 ```
+
+Root `agent.yaml` and `agent.manifest.yaml` are generated mirrors required by current azd Hosted Agents package/deploy behavior; `.azd/pi-foundry/pi-foundry.yaml` remains the source of truth.
 
 It does **not** modify user-owned agent assets:
 

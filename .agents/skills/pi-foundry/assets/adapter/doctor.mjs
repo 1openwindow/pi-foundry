@@ -47,6 +47,18 @@ function envHas(values, name) {
   return typeof values[name] === "string" && values[name].length > 0;
 }
 
+function staticWebContainerStatus(value) {
+  if (!value) return { ok: false, message: "artifact static-web mode missing ARTIFACT_STATIC_WEB_CONTAINER" };
+  const match = value.match(/^(\\*)\$web$/);
+  if (!match) return { ok: false, message: `ARTIFACT_STATIC_WEB_CONTAINER should be $web, got ${JSON.stringify(value)}` };
+  const slashCount = match[1].length;
+  // azd env get-values escapes a literal $web as \$web for dotenv output.
+  // More than one leading backslash means the runtime will receive an
+  // over-escaped container name such as \$web instead of $web.
+  if (slashCount <= 1) return { ok: true, message: "artifact static-web container is $web" };
+  return { ok: false, message: "ARTIFACT_STATIC_WEB_CONTAINER is over-escaped; set it with: azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'" };
+}
+
 async function main() {
   const render = commandResult("node", [".azd/pi-foundry/render.mjs"]);
   if (render.ok) pass("pi-foundry generated YAML rendered");
@@ -60,6 +72,8 @@ async function main() {
     ".azd/pi-foundry/pi-foundry.yaml",
     ".azd/pi-foundry/pi-foundry.lock.yaml",
     ".azd/pi-foundry/render.mjs",
+    "agent.yaml",
+    "agent.manifest.yaml",
     ".azd/pi-foundry/generated/agent.yaml",
     ".azd/pi-foundry/generated/agent.manifest.yaml",
   ];
@@ -115,7 +129,21 @@ async function main() {
     }
   }
 
-  const agentYaml = await readOptional(".azd/pi-foundry/generated/agent.yaml");
+  const rootAgentYaml = await readOptional("agent.yaml");
+  const generatedAgentYaml = await readOptional(".azd/pi-foundry/generated/agent.yaml");
+  if (rootAgentYaml && generatedAgentYaml) {
+    if (rootAgentYaml === generatedAgentYaml) pass("root agent.yaml matches generated agent.yaml");
+    else fail("root agent.yaml differs from .azd/pi-foundry/generated/agent.yaml; run node .azd/pi-foundry/render.mjs");
+  }
+
+  const rootManifestYaml = await readOptional("agent.manifest.yaml");
+  const generatedManifestYaml = await readOptional(".azd/pi-foundry/generated/agent.manifest.yaml");
+  if (rootManifestYaml && generatedManifestYaml) {
+    if (rootManifestYaml === generatedManifestYaml) pass("root agent.manifest.yaml matches generated manifest");
+    else fail("root agent.manifest.yaml differs from .azd/pi-foundry/generated/agent.manifest.yaml; run node .azd/pi-foundry/render.mjs");
+  }
+
+  const agentYaml = rootAgentYaml ?? generatedAgentYaml;
   if (agentYaml) {
     const reserved = [...agentYaml.matchAll(/^\s*-\s+name:\s*["']?([^"'\s]+)["']?\s*$/gm)]
       .map((match) => match[1])
@@ -152,6 +180,9 @@ async function main() {
         if (envHas(values, name)) pass(`artifact env has ${name}`);
         else warn(`artifact static-web mode missing ${name}`);
       }
+      const container = staticWebContainerStatus(values.ARTIFACT_STATIC_WEB_CONTAINER);
+      if (container.ok) pass(container.message);
+      else fail(container.message);
     }
   } else {
     fail("no azd environment selected; run azd env new <env-name> or azd env select <env-name>");

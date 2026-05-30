@@ -59,6 +59,8 @@ This file is created by the skill from user/repo intent. It is the high-level de
 
 ```text
 azure.yaml
+agent.yaml
+agent.manifest.yaml
 .azd/pi-foundry/Dockerfile
 .azd/pi-foundry/pi-foundry.lock.yaml
 .azd/pi-foundry/generated/agent.yaml

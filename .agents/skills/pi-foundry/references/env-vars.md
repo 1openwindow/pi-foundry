@@ -21,7 +21,7 @@ Use `azd env` for deployment environment values. Do not commit secrets.
 - `ARTIFACT_PUBLISH_MODE` — `disabled` or `static-web`.
 - `ARTIFACT_STORAGE_ACCOUNT`
 - `ARTIFACT_STATIC_WEB_ENDPOINT`
-- `ARTIFACT_STATIC_WEB_CONTAINER` — usually `$web`.
+- `ARTIFACT_STATIC_WEB_CONTAINER` — usually `$web`. Set it with `azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'` or `configure-env.mjs`; do not store an over-escaped value such as `\\$web`.
 - `ARTIFACT_BLOB_PREFIX`
 
 ## Reserved prefixes

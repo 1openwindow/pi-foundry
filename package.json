@@ -15,7 +15,8 @@
     "demo:docker:build": "scripts/docker-build-local.sh",
     "runtime:build": "scripts/runtime-image-build.sh",
     "runtime:acr-build": "node scripts/runtime-image-acr-build.mjs",
-    "runtime:smoke": "scripts/runtime-image-smoke.sh"
+    "runtime:smoke": "scripts/runtime-image-smoke.sh",
+    "e2e:clean-agent": "scripts/e2e-clean-agent.sh"
   },
   "engines": {
     "node": ">=22.19.0"
