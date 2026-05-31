@@ -22,6 +22,7 @@ skills-lock.json
 .DS_Store
 .vscode/
 .idea/
+*:Zone.Identifier
 
 # Build/output
 dist/
