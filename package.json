@@ -5,18 +5,10 @@
   "version": "0.0.0",
   "scripts": {
     "start:backend": "node src/backend.mjs",
-    "validate": "node scripts/validate.mjs",
-    "doctor": "node scripts/doctor.mjs",
-    "grant:artifact-rbac": "node scripts/grant-artifact-rbac.mjs",
-    "demo:remote:artifact": "scripts/demo-remote-artifact.sh",
-    "smoke": "runtime/official-invocations/smoke-local.sh",
-    "smoke:official": "runtime/official-invocations/smoke-local.sh",
-    "docker:build": "scripts/docker-build-local.sh",
-    "demo:docker:build": "scripts/docker-build-local.sh",
+    "test": "node --test --test-reporter=spec test/*.test.mjs",
+    "emit:contract": "node scripts/emit-contract.mjs",
     "runtime:build": "scripts/runtime-image-build.sh",
-    "runtime:acr-build": "node scripts/runtime-image-acr-build.mjs",
-    "runtime:smoke": "scripts/runtime-image-smoke.sh",
-    "e2e:clean-agent": "scripts/e2e-clean-agent.sh"
+    "runtime:smoke": "scripts/runtime-image-smoke.sh"
   },
   "engines": {
     "node": ">=22.19.0"
