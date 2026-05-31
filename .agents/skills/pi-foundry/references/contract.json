@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "1.0.0",
+  "runtime": {
+    "workspace": "/workspace",
+    "filesDir": "/files",
+    "ports": {
+      "external": 8088,
+      "internalNode": 18080
+    },
+    "startupCommand": "/app/runtime/official-invocations/entrypoint.sh"
+  },
+  "resourceTiers": [
+    {
+      "cpu": "0.25",
+      "memory": "0.5Gi"
+    },
+    {
+      "cpu": "0.5",
+      "memory": "1Gi"
+    },
+    {
+      "cpu": "1",
+      "memory": "2Gi"
+    },
+    {
+      "cpu": "2",
+      "memory": "4Gi"
+    }
+  ],
+  "env": {
+    "reservedPrefixes": [
+      "AGENT_",
+      "FOUNDRY_"
+    ],
+    "reservedAllowedExceptions": [
+      "FOUNDRY_PROJECT_ENDPOINT"
+    ],
+    "requiredFromAzd": [
+      "AZURE_SUBSCRIPTION_ID",
+      "AZURE_TENANT_ID",
+      "AZURE_LOCATION",
+      "FOUNDRY_PROJECT_ENDPOINT",
+      "AZURE_CONTAINER_REGISTRY_ENDPOINT"
+    ],
+    "requiredWhenLive": [
+      "PI_OPENAI_API_KEY",
+      "PI_OPENAI_BASE_URL",
+      "PI_OPENAI_MODEL"
+    ],
+    "runtime": [
+      {
+        "name": "PI_ARGS",
+        "default": "--mode rpc --no-session",
+        "note": "Append --provider foundry --model <model> when using PI_OPENAI_*."
+      },
+      {
+        "name": "PI_MOCK",
+        "default": "0",
+        "accepts": [
+          "0",
+          "1",
+          "true",
+          "false"
+        ]
+      },
+      {
+        "name": "REQUEST_TIMEOUT_MS",
+        "default": "300000"
+      },
+      {
+        "name": "ENABLE_DIAGNOSTICS",
+        "default": "0",
+        "accepts": [
+          "0",
+          "1",
+          "true",
+          "false"
+        ]
+      },
+      {
+        "name": "WORKSPACE_DIR",
+        "default": "/workspace"
+      },
+      {
+        "name": "FILES_DIR",
+        "default": "/files"
+      },
+      {
+        "name": "STATE_DIR",
+        "default": "${HOME}/.pi-foundry"
+      },
+      {
+        "name": "SESSIONS_DIR",
+        "default": "${STATE_DIR}/sessions"
+      },
+      {
+        "name": "PI_CODING_AGENT_DIR",
+        "default": "${STATE_DIR}/pi-agent",
+        "note": "Never defaults to ~/.pi/agent; that would clobber a developer's interactive pi config."
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "ARTIFACT_PUBLISH_MODE",
+        "default": "disabled",
+        "accepts": [
+          "disabled",
+          "static-web"
+        ]
+      },
+      {
+        "name": "ARTIFACT_STORAGE_ACCOUNT",
+        "requiredWhen": "ARTIFACT_PUBLISH_MODE=static-web"
+      },
+      {
+        "name": "ARTIFACT_STATIC_WEB_ENDPOINT",
+        "requiredWhen": "ARTIFACT_PUBLISH_MODE=static-web"
+      },
+      {
+        "name": "ARTIFACT_STATIC_WEB_CONTAINER",
+        "default": "$web"
+      },
+      {
+        "name": "ARTIFACT_BLOB_PREFIX",
+        "default": "<agent-name>"
+      },
+      {
+        "name": "ARTIFACT_MAX_PUBLISH_BYTES",
+        "default": "104857600"
+      },
+      {
+        "name": "ARTIFACT_PROMPT_HINTS",
+        "default": "1",
+        "accepts": [
+          "0",
+          "1",
+          "true",
+          "false"
+        ]
+      }
+    ]
+  }
+}

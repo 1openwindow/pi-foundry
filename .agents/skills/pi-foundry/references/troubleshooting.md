@@ -1,50 +1,48 @@
-# pi-foundry troubleshooting quick reference
+# pi-foundry skill troubleshooting
 
-Run from the user's existing Pi agent repo unless noted otherwise.
+The LLM consults this file when `azd up`, `azd ai agent invoke`, or `grant-artifact-rbac` fails. Match the error symptom in the left column, give the user the one-line cause and the one command in the right column.
 
-## Preflight
+## Bootstrap / template
 
-```bash
-node .azd/pi-foundry/render.mjs --check
-node .azd/pi-foundry/doctor.mjs
-azd ai agent doctor --no-prompt
-```
+| Symptom | Cause + action |
+|---|---|
+| `bootstrap.mjs` refuses to write because `azure.yaml` exists | User repo already has a non-pi-foundry `azure.yaml`. Ask before replacing; rerun `bootstrap.mjs --force` only after explicit confirmation, and back up the old file first. |
+| `Dockerfile` contains `<runtime-image>` literal at deploy time | bootstrap was run without `--runtime-image`. Rerun: `bootstrap.mjs --runtime-image <acr>/pi-foundry-runtime:<tag>` |
+| `agent.yaml` / `agent.manifest.yaml` contains `<agent-name>` literal | Same root cause: bootstrap not run, or run with wrong arg. Rerun with `--agent-name <name>`. |
 
-## Deployment succeeds but invoke fails
+## azd env
 
-Check:
+| Symptom | Cause + action |
+|---|---|
+| `azd env get-values` is empty | No environment selected. `azd env new <name>` or `azd env select <name>`. |
+| Deploy fails with "image pull unauthorized" | Foundry identities lack ACR pull. Run `azd ai agent doctor --no-prompt` and assign AcrPull on the registry. |
+| Invoke returns "configuration: no foundry provider" or model 401 | `PI_OPENAI_*` not set in azd env, or `PI_ARGS` missing `--provider foundry --model <model>`. Reconfigure via `configure-env.mjs`. |
+| Container fails readiness | `PI_MOCK` not set and `PI_OPENAI_API_KEY` missing → runtime rejects start. Set `PI_MOCK=1` for smoke or set the API key. |
+| Artifact links 403/404 | Either `ARTIFACT_PUBLISH_MODE != static-web`, or RBAC missing. Run `grant-artifact-rbac.mjs <agent-name> <storage-account>`. |
+| `ARTIFACT_STATIC_WEB_CONTAINER` shows as `\$web` in `azd env get-values` | Shell double-escaped the `$`. Reset with: `azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'` (single quotes, `KEY=value` form). |
+| azd env contains custom `AGENT_*` or `FOUNDRY_*` variables (other than `FOUNDRY_PROJECT_ENDPOINT`) | Foundry reserves these prefixes. Remove them with `azd env set <NAME>=` to clear, or rename. |
 
-- `PI_MOCK=0` for real model mode.
-- `PI_ARGS` includes `--mode rpc --provider foundry --model <model>`.
-- `PI_OPENAI_API_KEY` is set in `azd env`.
-- `PI_OPENAI_BASE_URL` ends in `/openai/v1` for OpenAI-compatible Foundry/account endpoints.
-- The invoked Hosted Agent version is the current deployed version.
+## Deploy
 
-## Container startup/readiness fails
+| Symptom | Cause + action |
+|---|---|
+| `azd up` succeeds but `azd ai agent invoke` returns nothing or times out | Pass the deployed version explicitly: `azd ai agent invoke <name> --protocol invocations --version <N> --new-session --timeout 900 'Say exactly: ok'`. Find `<N>` in `azd ai agent show <name> --output json --no-prompt`. |
+| `agent.yaml is missing` during deploy | Foundry deploy currently reads `agent.yaml` from repo root. The skill puts it there by design. If it was deleted, rerun `bootstrap.mjs`. |
+| Resource tier rejected | Hosted Agent only allows cpu/memory pairs `0.25/0.5Gi, 0.5/1Gi, 1/2Gi, 2/4Gi`. Edit `azure.yaml` and `agent.yaml` to match. |
+| Container exceeds reserved env restriction | Some `environment_variables` entry uses `AGENT_*` or `FOUNDRY_*` (other than `FOUNDRY_PROJECT_ENDPOINT`). Remove it from `agent.yaml` / `agent.manifest.yaml`. |
 
-Check:
+## Invoke
 
-- `.azd/pi-foundry/Dockerfile` uses the intended runtime image.
-- `azure.yaml` startup command is `/app/runtime/official-invocations/entrypoint.sh`.
-- Internal public port convention is `8088`.
-- `GET /readiness` returns 200.
+| Symptom | Cause + action |
+|---|---|
+| Response includes `"mock": true` when user expected real model | `PI_MOCK=1` is still set. `azd env set PI_MOCK=0` and `azd up` to roll a new revision. |
+| Streaming SSE shows artifact markdown as token events | Known limitation; ignore the token, use `done.full_text` and `done.artifacts`. (Tracked separately.) |
+| Session continuity not working | Pass the same `agent_session_id`. `verify.mjs --session <id>` reuses sessions. |
 
-## Artifact URLs missing or 403/404
+## Runtime image
 
-Check:
-
-- `ARTIFACT_PUBLISH_MODE=static-web`.
-- `ARTIFACT_STORAGE_ACCOUNT` and `ARTIFACT_STATIC_WEB_ENDPOINT` are configured.
-- `postdeploy.mjs` ran successfully.
-- Agent identities have Storage Blob Data Contributor on the target storage account.
-
-## ACR/image pull issues
-
-Run:
-
-```bash
-azd ai agent show <agent-name> --output json --no-prompt
-azd ai agent monitor <agent-name> --tail 100 --type console
-```
-
-Then inspect identities and ACR permissions.
+| Symptom | Cause + action |
+|---|---|
+| `FROM <runtime-image>` fails at build time | Either bootstrap wasn't given `--runtime-image`, or the user's identity can't pull from that ACR. `az acr login -n <acr>` and rerun. |
+| Skills don't load inside container | Pi reads from `/workspace/.agents/skills/`. Ensure the user's repo has skills there and Dockerfile does `COPY . /workspace` (it does by default). |
+| Workspace empty inside container | `.dockerignore` excluded too much. Compare against `templates/.dockerignore`. |

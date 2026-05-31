@@ -1,0 +1,89 @@
+// pi-foundry runtime image contract — single source of truth.
+//
+// This file is consumed in three places:
+//   1. src/backend.mjs           validates env at startup, fails fast on missing required vars.
+//   2. src/cli.mjs               exposes `pi-foundry contract` and `pi-foundry doctor`.
+//   3. .agents/skills/pi-foundry/references/contract.json
+//                                regenerated from this file by scripts/emit-contract.mjs.
+//
+// Edit here; then run `node scripts/emit-contract.mjs` to refresh the skill JSON.
+
+export const contract = {
+  schemaVersion: "1.0.0",
+  runtime: {
+    workspace: "/workspace",
+    filesDir: "/files",
+    ports: { external: 8088, internalNode: 18080 },
+    startupCommand: "/app/runtime/official-invocations/entrypoint.sh",
+  },
+  resourceTiers: [
+    { cpu: "0.25", memory: "0.5Gi" },
+    { cpu: "0.5", memory: "1Gi" },
+    { cpu: "1", memory: "2Gi" },
+    { cpu: "2", memory: "4Gi" },
+  ],
+  env: {
+    reservedPrefixes: ["AGENT_", "FOUNDRY_"],
+    reservedAllowedExceptions: ["FOUNDRY_PROJECT_ENDPOINT"],
+    // azd / Foundry resource plumbing — required by the deployment, not by the runtime.
+    requiredFromAzd: [
+      "AZURE_SUBSCRIPTION_ID",
+      "AZURE_TENANT_ID",
+      "AZURE_LOCATION",
+      "FOUNDRY_PROJECT_ENDPOINT",
+      "AZURE_CONTAINER_REGISTRY_ENDPOINT",
+    ],
+    // Required inside the runtime container, unless PI_MOCK=1.
+    requiredWhenLive: ["PI_OPENAI_API_KEY", "PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"],
+    // Optional runtime knobs with their defaults / accepted shapes.
+    runtime: [
+      { name: "PI_ARGS", default: "--mode rpc --no-session", note: "Append --provider foundry --model <model> when using PI_OPENAI_*." },
+      { name: "PI_MOCK", default: "0", accepts: ["0", "1", "true", "false"] },
+      { name: "REQUEST_TIMEOUT_MS", default: "300000" },
+      { name: "ENABLE_DIAGNOSTICS", default: "0", accepts: ["0", "1", "true", "false"] },
+      { name: "WORKSPACE_DIR", default: "/workspace" },
+      { name: "FILES_DIR", default: "/files" },
+      { name: "STATE_DIR", default: "${HOME}/.pi-foundry" },
+      { name: "SESSIONS_DIR", default: "${STATE_DIR}/sessions" },
+      { name: "PI_CODING_AGENT_DIR", default: "${STATE_DIR}/pi-agent", note: "Never defaults to ~/.pi/agent; that would clobber a developer's interactive pi config." },
+    ],
+    artifacts: [
+      { name: "ARTIFACT_PUBLISH_MODE", default: "disabled", accepts: ["disabled", "static-web"] },
+      { name: "ARTIFACT_STORAGE_ACCOUNT", requiredWhen: "ARTIFACT_PUBLISH_MODE=static-web" },
+      { name: "ARTIFACT_STATIC_WEB_ENDPOINT", requiredWhen: "ARTIFACT_PUBLISH_MODE=static-web" },
+      { name: "ARTIFACT_STATIC_WEB_CONTAINER", default: "$web" },
+      { name: "ARTIFACT_BLOB_PREFIX", default: "<agent-name>" },
+      { name: "ARTIFACT_MAX_PUBLISH_BYTES", default: "104857600" },
+      { name: "ARTIFACT_PROMPT_HINTS", default: "1", accepts: ["0", "1", "true", "false"] },
+    ],
+  },
+};
+
+export function validateRuntimeEnv(env, { mock } = {}) {
+  const issues = [];
+  if (!mock) {
+    for (const name of contract.env.requiredWhenLive) {
+      if (!env[name] || String(env[name]).trim() === "") {
+        issues.push({ severity: "error", name, message: `${name} is required (set it via azd env, or set PI_MOCK=1 for offline mode).` });
+      }
+    }
+  }
+  if (env.ARTIFACT_PUBLISH_MODE === "static-web") {
+    for (const spec of contract.env.artifacts) {
+      if (spec.requiredWhen === "ARTIFACT_PUBLISH_MODE=static-web" && !env[spec.name]) {
+        issues.push({ severity: "error", name: spec.name, message: `${spec.name} is required when ARTIFACT_PUBLISH_MODE=static-web.` });
+      }
+    }
+  }
+  for (const name of Object.keys(env)) {
+    if (!contract.env.reservedPrefixes.some((prefix) => name.startsWith(prefix))) continue;
+    if (contract.env.reservedAllowedExceptions.includes(name)) continue;
+    if (name.startsWith("AGENT_")) continue; // populated by Foundry at runtime; informational, not user-set.
+    if (name.startsWith("FOUNDRY_")) {
+      // Legacy aliases the runtime still reads; warn instead of erroring.
+      if (["FOUNDRY_OPENAI_API_KEY", "FOUNDRY_OPENAI_BASE_URL", "FOUNDRY_OPENAI_MODEL", "FOUNDRY_INVOCATIONS_ENDPOINT", "FOUNDRY_TENANT_ID", "FOUNDRY_TOKEN_SCOPE", "FOUNDRY_BEARER_TOKEN", "FOUNDRY_MODEL", "FOUNDRY_MODEL_LABEL", "FOUNDRY_PROVIDER_NAME", "FOUNDRY_AGENT_SESSION_ID", "FOUNDRY_TOKEN_COMMAND_CWD"].includes(name)) continue;
+      issues.push({ severity: "warning", name, message: `${name} uses the reserved FOUNDRY_ prefix; Foundry may overwrite it. Rename unless it is an established alias.` });
+    }
+  }
+  return issues;
+}

@@ -14,6 +14,7 @@ export function createPiRpcAdapter({
   foundryOpenAIBaseUrl,
   foundryOpenAIModel,
 }) {
+  const isMock = Boolean(mock);
   function removeArgWithValue(args, name) {
     const result = [];
     for (let index = 0; index < args.length; index += 1) {
@@ -73,7 +74,7 @@ export function createPiRpcAdapter({
   }
 
   async function invoke(prompt, options) {
-    if (mock) {
+    if (isMock) {
       return {
         text: `mock response: ${prompt}`,
         events: [],
@@ -216,7 +217,17 @@ export function createPiRpcAdapter({
   }
 
   async function configureFoundryOpenAIProvider() {
+    // Only write models.json when the operator has supplied the full Pi RPC -> Foundry triple.
+    // Skipped in mock mode and whenever PI_CODING_AGENT_DIR is unsafe (~/.pi/agent is the
+    // developer's interactive pi config; backend.mjs already defaults piAgentDir away from it).
+    if (mock) return;
     if (!process.env.PI_OPENAI_API_KEY && !process.env.FOUNDRY_OPENAI_API_KEY) return;
+    if (!foundryOpenAIBaseUrl || !foundryOpenAIModel) return;
+    const home = process.env.HOME ?? "";
+    if (home && piAgentDir === resolve(home, ".pi/agent")) {
+      log("warn", "foundry_provider_skipped", { reason: "PI_CODING_AGENT_DIR resolves to ~/.pi/agent; refusing to overwrite interactive pi config", piAgentDir });
+      return;
+    }
 
     const modelsPath = resolve(piAgentDir, "models.json");
     const config = await loadJsonFile(modelsPath);

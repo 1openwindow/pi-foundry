@@ -205,25 +205,18 @@ async function checkRepoShape() {
     "runtime/official-invocations/entrypoint.sh",
     "runtime/official-invocations/smoke-local.sh",
     ".agents/skills/pi-foundry/SKILL.md",
-    ".agents/skills/pi-foundry/assets/adapter/README.md",
-    ".agents/skills/pi-foundry/assets/adapter/render.mjs",
-    ".agents/skills/pi-foundry/assets/adapter/doctor.mjs",
-    ".agents/skills/pi-foundry/assets/adapter/postdeploy.mjs",
-    ".agents/skills/pi-foundry/assets/adapter/dockerignore.block",
-    ".agents/skills/pi-foundry/assets/adapter/adapter-manifest.json",
-    ".agents/skills/pi-foundry/scripts/inspect-repo.mjs",
-    ".agents/skills/pi-foundry/scripts/init-adapter.mjs",
-    ".agents/skills/pi-foundry/scripts/update-config.mjs",
-    ".agents/skills/pi-foundry/scripts/merge-dockerignore.mjs",
+    ".agents/skills/pi-foundry/templates/Dockerfile",
+    ".agents/skills/pi-foundry/templates/azure.yaml",
+    ".agents/skills/pi-foundry/templates/agent.yaml",
+    ".agents/skills/pi-foundry/templates/agent.manifest.yaml",
+    ".agents/skills/pi-foundry/templates/.dockerignore",
+    ".agents/skills/pi-foundry/scripts/_lib.mjs",
+    ".agents/skills/pi-foundry/scripts/bootstrap.mjs",
     ".agents/skills/pi-foundry/scripts/configure-env.mjs",
-    ".agents/skills/pi-foundry/scripts/smoke-invoke.mjs",
-    ".agents/skills/pi-foundry/scripts/migrate-adapter.mjs",
-    ".agents/skills/pi-foundry/references/vision.md",
-    ".agents/skills/pi-foundry/references/yaml-ownership.md",
-    ".agents/skills/pi-foundry/references/env-vars.md",
-    ".agents/skills/pi-foundry/references/runtime-images.json",
+    ".agents/skills/pi-foundry/scripts/grant-artifact-rbac.mjs",
+    ".agents/skills/pi-foundry/scripts/verify.mjs",
+    ".agents/skills/pi-foundry/references/contract.json",
     ".agents/skills/pi-foundry/references/troubleshooting.md",
-    ".agents/skills/pi-foundry/references/adapter-contract.md",
   ];
 
   for (const file of requiredFiles) {
@@ -234,9 +227,9 @@ async function checkRepoShape() {
   if (compareNodeVersion(process.version, "22.19.0") >= 0) pass(`Node ${process.version} satisfies >=22.19.0`);
   else fail(`Node ${process.version} is too old`, "Expected >=22.19.0");
 
-  const installSmoke = commandResult("bash", ["-lc", "repo=$PWD; tmp=$(mktemp -d); cd \"$tmp\" && node \"$repo/.agents/skills/pi-foundry/scripts/install-adapter.mjs\" --agent-name hello-world-agent && node .azd/pi-foundry/render.mjs --check"], { timeout: 30000 });
-  if (installSmoke.ok) pass("pi-foundry skill can install adapter assets and render generated YAML");
-  else warn("pi-foundry skill install smoke failed", "Run install-adapter.mjs in a temp repo and inspect output.");
+  const installSmoke = commandResult("bash", ["-lc", "repo=$PWD; tmp=$(mktemp -d); cd \"$tmp\" && node \"$repo/.agents/skills/pi-foundry/scripts/bootstrap.mjs\" --agent-name hello-world-agent --runtime-image example.azurecr.io/pi-foundry-runtime:0.0.0-test && test -f agent.yaml && test ! -d .azd/pi-foundry"], { timeout: 30000 });
+  if (installSmoke.ok) pass("pi-foundry skill bootstrap produces 5 standard files with no .azd/pi-foundry footprint");
+  else warn("pi-foundry skill bootstrap smoke failed", "Run bootstrap.mjs in a temp repo and inspect output.");
 
   const gitignore = (await readOptional(".gitignore")) ?? "";
   if (/^\.azure\/?$/m.test(gitignore)) pass(".gitignore excludes .azure/");

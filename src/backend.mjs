@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { resolve, sep } from "node:path";
 import { createPiRpcAdapter } from "./adapters/pi-rpc.mjs";
 import { createArtifactManager } from "./runtime/artifacts.mjs";
+import { validateRuntimeEnv } from "./contract.mjs";
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -16,12 +17,24 @@ const workspaceDir = resolve(process.env.WORKSPACE_DIR ?? process.cwd());
 const filesDir = resolve(process.env.FILES_DIR ?? `${workspaceDir}/.files`);
 const stateDir = resolve(process.env.STATE_DIR ?? `${process.env.HOME ?? "/tmp"}/.pi-foundry`);
 const sessionsDir = resolve(process.env.SESSIONS_DIR ?? `${stateDir}/sessions`);
-const piAgentDir = resolve(process.env.PI_CODING_AGENT_DIR ?? `${process.env.HOME ?? "/tmp"}/.pi/agent`);
-const foundryOpenAIBaseUrl =
-  process.env.PI_OPENAI_BASE_URL ??
-  process.env.FOUNDRY_OPENAI_BASE_URL ??
-  "https://zihch-test-wus3-resource.services.ai.azure.com/openai/v1";
-const foundryOpenAIModel = process.env.PI_OPENAI_MODEL ?? process.env.FOUNDRY_OPENAI_MODEL ?? "gpt-5.4-mini";
+// Default per-runtime, NEVER ~/.pi/agent — that path is the developer's interactive pi config dir
+// and clobbering it from a server-side process is a footgun.
+const piAgentDir = resolve(process.env.PI_CODING_AGENT_DIR ?? `${stateDir}/pi-agent`);
+const foundryOpenAIBaseUrl = process.env.PI_OPENAI_BASE_URL ?? process.env.FOUNDRY_OPENAI_BASE_URL;
+const foundryOpenAIModel = process.env.PI_OPENAI_MODEL ?? process.env.FOUNDRY_OPENAI_MODEL;
+
+// Fail-fast: validate env against the runtime contract before any side effects.
+{
+  const issues = validateRuntimeEnv(process.env, { mock });
+  const errors = issues.filter((issue) => issue.severity === "error");
+  const warnings = issues.filter((issue) => issue.severity === "warning");
+  for (const warning of warnings) console.warn(JSON.stringify({ level: "warn", message: "env_warning", time: new Date().toISOString(), ...warning }));
+  if (errors.length > 0) {
+    for (const error of errors) console.error(JSON.stringify({ level: "error", message: "env_error", time: new Date().toISOString(), ...error }));
+    console.error(JSON.stringify({ level: "error", message: "startup_aborted", time: new Date().toISOString(), reason: "missing required runtime env; run `pi-foundry doctor` inside the container for details." }));
+    process.exit(1);
+  }
+}
 const artifactPublishMode = process.env.ARTIFACT_PUBLISH_MODE ?? "disabled";
 const artifactStorageAccount = process.env.ARTIFACT_STORAGE_ACCOUNT;
 const artifactStaticWebEndpoint = process.env.ARTIFACT_STATIC_WEB_ENDPOINT;
@@ -188,9 +201,10 @@ function normalizeSessionId(value) {
 async function handleInvocation(payload, requestId, sessionIdOverride, onTextDelta) {
   if (isDiagnosticsRequest(payload)) {
     const diagnostics = await runFoundryOpenAIDiagnostics();
+    const diagnosticsText = JSON.stringify(diagnostics, null, 2);
     return {
       statusCode: diagnostics.ok === false ? 502 : 200,
-      body: { output: JSON.stringify(diagnostics, null, 2), sessionId: normalizeSessionId(sessionIdOverride ?? payload.sessionId), mock: false },
+      body: { output: diagnosticsText, modelText: diagnosticsText, sessionId: normalizeSessionId(sessionIdOverride ?? payload.sessionId), mock: false, artifacts: [] },
     };
   }
 
@@ -222,14 +236,17 @@ async function handleInvocation(payload, requestId, sessionIdOverride, onTextDel
     const effectivePrompt = artifactManager.withArtifactPromptHint(prompt, artifactDir);
     const result = await piAdapter.invoke(effectivePrompt, { requestId, sessionId, cwd, piSessionDir, onTextDelta });
     const latencyMs = Date.now() - started;
+    const modelText = result.text;
     let artifacts = [];
-    let output = result.text;
+    let artifactPublishError;
+    let output = modelText;
     try {
       artifacts = await artifactManager.publishStaticWebArtifacts({ artifactId, artifactDir, requestId, sessionId });
       output = artifactManager.appendArtifactLinks(output, artifacts);
     } catch (publishError) {
       log("error", "artifact_publish_error", { requestId, sessionId, artifactId, error: serializeError(publishError) });
-      output = `${output.trimEnd()}\n\nArtifact publishing failed: ${publishError instanceof Error ? publishError.message : String(publishError)}`;
+      artifactPublishError = publishError instanceof Error ? publishError.message : String(publishError);
+      output = `${output.trimEnd()}\n\nArtifact publishing failed: ${artifactPublishError}`;
     }
 
     log("info", "invocation_end", {
@@ -241,7 +258,17 @@ async function handleInvocation(payload, requestId, sessionIdOverride, onTextDel
       mock: result.mock,
       piExitCode: result.piExitCode,
     });
-    return { statusCode: 200, body: { output, sessionId: result.sessionId, mock: result.mock, artifacts } };
+    return {
+      statusCode: 200,
+      body: {
+        output,
+        modelText,
+        sessionId: result.sessionId,
+        mock: result.mock,
+        artifacts,
+        ...(artifactPublishError ? { artifactPublishError } : {}),
+      },
+    };
   } catch (error) {
     const latencyMs = Date.now() - started;
     const statusCode = error instanceof HttpError ? error.statusCode : 500;
@@ -356,7 +383,7 @@ const server = createServer(async (req, res) => {
         sessionsDir,
         piAgentDir,
         foundryOpenAIConfigured: Boolean(process.env.PI_OPENAI_API_KEY ?? process.env.FOUNDRY_OPENAI_API_KEY),
-        foundryOpenAIModel,
+        foundryOpenAIModel: foundryOpenAIModel ?? null,
         artifactPublishing: {
           mode: artifactPublishMode,
           enabled: artifactManager.staticWebPublishingEnabled(),
@@ -392,27 +419,30 @@ const server = createServer(async (req, res) => {
           connection: "keep-alive",
         });
 
-        let streamedText = "";
         const result = await handleInvocation(payload, requestId, sessionId, (delta) => {
-          streamedText += delta;
           writeSse(res, { type: "token", content: delta });
         });
-        if (result.body.output.startsWith(streamedText) && result.body.output.length > streamedText.length) {
-          writeSse(res, { type: "token", content: result.body.output.slice(streamedText.length) });
-        }
+        // SSE contract: token events are model deltas ONLY. Server-side trailers
+        // (artifact links, publish failures) MUST NOT be streamed as token events;
+        // clients render them from the structured `artifacts` field in `done`.
         writeSse(res, {
           type: "done",
-          full_text: result.body.output,
+          full_text: result.body.modelText,
           session_id: result.body.sessionId,
           request_id: requestId,
           artifacts: result.body.artifacts ?? [],
+          ...(result.body.artifactPublishError ? { artifact_publish_error: result.body.artifactPublishError } : {}),
         });
         res.end();
         return;
       }
 
       const result = await handleInvocation(payload, requestId, sessionId);
-      sendJson(res, result.statusCode, { requestId, ...result.body });
+      // Non-SSE JSON response: keep backwards-compat shape. `output` includes the artifact
+      // markdown trailer for simple clients; structured `artifacts` and raw `modelText` are
+      // also available for clients that want to render them separately.
+      const { modelText: _omitted, ...jsonBody } = result.body;
+      sendJson(res, result.statusCode, { requestId, ...jsonBody });
       return;
     }
 

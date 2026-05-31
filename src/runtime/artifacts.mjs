@@ -122,18 +122,28 @@ export function createArtifactManager({
     return artifactContainerClientPromise;
   }
 
+  // Heuristics for whether the user prompt looks like it expects downloadable output.
+  // Intentionally narrow: weak words like `file`, `files`, `page`, `文件`, `页面`,
+  // `生成` are excluded because they fire on most coding/QA prompts and silently inject
+  // a long instruction block. Tighten further when in doubt: false negatives mean a user
+  // gets a less-helpful artifact response; false positives waste tokens on every turn.
   function likelyArtifactPrompt(prompt) {
-    return /\b(html|artifact|artifacts|file|files|report|mp3|mp4|video|audio|zip|download|webpage|page|presentation|slides?)\b/i.test(prompt) ||
-      /文件|网页|页面|报告|音频|视频|下载|产物|生成|汇报|演示|幻灯片|可播放|预览/.test(prompt);
+    return /\b(artifact|artifacts|download|downloadable|mp3|mp4|wav|webm|mov|zip|html|webpage|presentation|slides?|report|audio|video)\b/i.test(prompt) ||
+      /下载|产物|网页|报告|音频|视频|演示|幻灯片|可播放|预览/.test(prompt);
   }
 
   function likelyHtmlPresentationPrompt(prompt) {
-    return /\b(html|webpage|page|report|presentation|slides?|hyperframes?)\b/i.test(prompt) ||
-      /网页|页面|报告|汇报|演示|幻灯片|可播放|预览/.test(prompt);
+    return /\b(html|webpage|presentation|slides?|hyperframes?)\b/i.test(prompt) ||
+      /网页|演示|幻灯片|可播放|预览/.test(prompt);
   }
 
   function withArtifactPromptHint(prompt, artifactDir) {
-    if (!artifactPromptHints || !likelyArtifactPrompt(prompt)) return prompt;
+    if (!artifactPromptHints) return prompt;
+    // Never inject hints when there is nowhere to publish the resulting files;
+    // the instructions would tell the model to produce artifacts that vanish.
+    if (!staticWebPublishingEnabled()) return prompt;
+    if (!likelyArtifactPrompt(prompt)) return prompt;
+    log("info", "artifact_prompt_hint_injected", { artifactDir, htmlPresentation: likelyHtmlPresentationPrompt(prompt), promptLength: prompt.length });
     const hints = [
       "Artifact delivery contract:",
       `- Write all generated downloadable files under: ${artifactDir}`,
@@ -288,5 +298,7 @@ export function createArtifactManager({
     sendArtifactFile,
     staticWebPublishingEnabled,
     withArtifactPromptHint,
+    // Exposed for unit testing only.
+    _internals: { likelyArtifactPrompt, likelyHtmlPresentationPrompt },
   };
 }

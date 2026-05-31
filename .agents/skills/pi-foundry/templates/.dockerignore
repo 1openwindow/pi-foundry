@@ -1,0 +1,12 @@
+# pi-foundry skill bootstrap .dockerignore. Free to edit/extend.
+.git
+.gitignore
+.azure
+.env
+.env.*
+node_modules
+__pycache__
+*.pyc
+.venv
+.files
+.DS_Store

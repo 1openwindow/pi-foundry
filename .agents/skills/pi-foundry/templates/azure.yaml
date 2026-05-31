@@ -1,0 +1,23 @@
+# pi-foundry skill bootstrap azd file. Free to edit.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: <agent-name>
+requiredVersions:
+  extensions:
+    azure.ai.agents: '>=0.1.0-preview'
+services:
+  <agent-name>:
+    project: .
+    host: azure.ai.agent
+    language: docker
+    docker:
+      path: Dockerfile
+      context: .
+      remoteBuild: true
+      image: <agent-name>
+      tag: latest
+    config:
+      container:
+        resources:
+          cpu: "2"
+          memory: 4Gi
+        startupCommand: /app/runtime/official-invocations/entrypoint.sh

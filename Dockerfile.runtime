@@ -22,7 +22,9 @@ RUN apt-get update \
     && npm install -g @earendil-works/pi-coding-agent@0.75.5 --ignore-scripts \
     && mkdir -p /app /files /workspace /home/node/.pi-foundry /opt/official-invocations-wrapper \
     && chown -R node:node /app /files /workspace /home/node /opt/official-invocations-wrapper \
-    && runuser -u node -- uvx edge-tts --help >/dev/null
+    && runuser -u node -- uvx edge-tts --help >/dev/null \
+    && printf '#!/bin/sh\nexec node /app/src/cli.mjs "$@"\n' > /usr/local/bin/pi-foundry \
+    && chmod +x /usr/local/bin/pi-foundry
 
 USER node
 WORKDIR /app
