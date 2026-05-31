@@ -1,0 +1,61 @@
+name: runtime-image
+
+# Builds Dockerfile.runtime and publishes it to GHCR.
+#
+# Triggers:
+#   - push a tag like  v0.2.0   → publishes  ghcr.io/<owner>/pi-foundry-runtime:0.2.0
+#                                            ghcr.io/<owner>/pi-foundry-runtime:0.2
+#                                            ghcr.io/<owner>/pi-foundry-runtime:latest
+#   - workflow_dispatch  → publishes ghcr.io/<owner>/pi-foundry-runtime:sha-<short>
+#                          (and :manual-<run-number>, never :latest)
+#
+# Repo settings required (one-time):
+#   Settings → Actions → General → Workflow permissions = Read and write
+#   (or rely on the explicit `permissions:` block below — which we use).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/pi-foundry-runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=sha,prefix=sha-,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=manual-${{ github.run_number }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
