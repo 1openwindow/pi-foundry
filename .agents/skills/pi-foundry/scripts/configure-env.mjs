@@ -119,6 +119,17 @@ if (args["api-key-env"]) {
 console.log("");
 console.log("azd env configuration complete.");
 
+// Preflight: `azd deploy` fails cryptically without these two. Surface it now, not at deploy time.
+const missingForDeploy = [
+  !projectId && "AZURE_AI_PROJECT_ID (pass --azure-ai-project-id, or --azure-subscription-id + --foundry-project-endpoint to derive it)",
+  !tenantId && "AZURE_TENANT_ID (pass --azure-tenant-id, or --azure-subscription-id to derive it)",
+].filter(Boolean);
+if (missingForDeploy.length) {
+  console.log("");
+  console.log("WARNING: `azd deploy` will fail until these are set:");
+  for (const item of missingForDeploy) console.log(`  - ${item}`);
+}
+
 // ---------------------------------------------------------------------------
 
 function prefer(...values) {

@@ -25,6 +25,10 @@ azd extension install azure.ai.agents     # if missing
 azd auth login
 ```
 
+`azd` is the only Azure CLI you need. The skill's scripts resolve project/tenant
+ids and grant the keyless model role through ARM REST using `azd auth token`, so
+**`az` (Azure CLI) is not required**.
+
 You also need:
 
 - a Foundry project (subscription, location, project endpoint),
@@ -60,7 +64,10 @@ azd env set "PI_OPENAI_API_KEY=$PI_OPENAI_API_KEY"
 
 # Keyless alternative (no PI_OPENAI_API_KEY): mint AAD tokens via the Hosted Agent's
 # managed identity. Requires the agent identity to have a Cognitive Services / Azure
-# OpenAI data-plane role (e.g. "Cognitive Services User") on the model resource.
+# OpenAI data-plane role on the model resource. After the first `azd deploy` (the
+# identity only exists once deployed), grant it with:
+#   node <skill>/scripts/grant-model-access.mjs   # Cognitive Services OpenAI User, idempotent
+# then redeploy. Manual equivalent:
 # azd env set PI_MODEL_AUTH managed-identity
 # azd env set FOUNDRY_TOKEN_SCOPE 'https://cognitiveservices.azure.com/.default'  # default; override only if needed
 ```
