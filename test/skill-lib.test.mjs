@@ -13,8 +13,8 @@ describe("parseDotenv", () => {
   });
 
   it("strips matching single or double quotes but preserves literal $", () => {
-    // azd's `KEY='$web'` form must round-trip the literal `$web`, otherwise the
-    // ARTIFACT_STATIC_WEB_CONTAINER value gets double-expanded by shell consumers.
+    // azd's `KEY='$web'` form must round-trip the literal `$web`, otherwise a
+    // value like `$web` gets double-expanded by shell consumers.
     const text = `A="hello"\nB='world'\nC='$web'\nD="$plain"\n`;
     assert.deepEqual(parseDotenv(text), { A: "hello", B: "world", C: "$web", D: "$plain" });
   });
@@ -45,7 +45,7 @@ describe("isSecretName", () => {
   });
 
   it("does not flag plain config names", () => {
-    for (const name of ["PI_OPENAI_MODEL", "AZURE_LOCATION", "ARTIFACT_STORAGE_ACCOUNT", "PI_ARGS"]) {
+    for (const name of ["PI_OPENAI_MODEL", "AZURE_LOCATION", "AZURE_CONTAINER_REGISTRY_ENDPOINT", "PI_ARGS"]) {
       assert.equal(isSecretName(name), false, name);
     }
   });

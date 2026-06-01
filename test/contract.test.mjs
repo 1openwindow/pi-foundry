@@ -5,7 +5,7 @@ import { contract, validateRuntimeEnv } from "../src/contract.mjs";
 describe("contract", () => {
   it("declares schemaVersion and required runtime sections", () => {
     assert.equal(typeof contract.schemaVersion, "string");
-    assert.ok(contract.runtime.startupCommand.startsWith("/app/"));
+    assert.ok(contract.runtime.startupCommand.includes("/app/src/backend.mjs"));
     assert.ok(Array.isArray(contract.resourceTiers) && contract.resourceTiers.length > 0);
     for (const tier of contract.resourceTiers) {
       assert.ok(/^[0-9.]+$/.test(tier.cpu), `cpu must be numeric string: ${tier.cpu}`);
@@ -50,31 +50,18 @@ describe("validateRuntimeEnv", () => {
     assert.deepEqual(issues.filter((i) => i.severity === "error"), []);
   });
 
-  it("requires storage account + static web endpoint when ARTIFACT_PUBLISH_MODE=static-web", () => {
+  it("does not require PI_OPENAI_API_KEY when PI_MODEL_AUTH=managed-identity", () => {
     const issues = validateRuntimeEnv(
-      {
-        PI_OPENAI_API_KEY: "sk-x",
-        PI_OPENAI_BASE_URL: "https://x",
-        PI_OPENAI_MODEL: "gpt-4.1-mini",
-        ARTIFACT_PUBLISH_MODE: "static-web",
-      },
-      { mock: false },
-    );
-    const errorNames = issues.filter((i) => i.severity === "error").map((i) => i.name).sort();
-    assert.deepEqual(errorNames, ["ARTIFACT_STATIC_WEB_ENDPOINT", "ARTIFACT_STORAGE_ACCOUNT"]);
-  });
-
-  it("does not require artifact fields when ARTIFACT_PUBLISH_MODE=disabled", () => {
-    const issues = validateRuntimeEnv(
-      {
-        PI_OPENAI_API_KEY: "sk-x",
-        PI_OPENAI_BASE_URL: "https://x",
-        PI_OPENAI_MODEL: "gpt-4.1-mini",
-        ARTIFACT_PUBLISH_MODE: "disabled",
-      },
+      { PI_MODEL_AUTH: "managed-identity", PI_OPENAI_BASE_URL: "https://x", PI_OPENAI_MODEL: "gpt-4.1-mini" },
       { mock: false },
     );
     assert.deepEqual(issues.filter((i) => i.severity === "error"), []);
+  });
+
+  it("still requires base url + model when PI_MODEL_AUTH=managed-identity", () => {
+    const issues = validateRuntimeEnv({ PI_MODEL_AUTH: "managed-identity" }, { mock: false });
+    const errorNames = issues.filter((i) => i.severity === "error").map((i) => i.name).sort();
+    assert.deepEqual(errorNames, ["PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"]);
   });
 
   it("does not warn on AGENT_* (populated by Foundry, informational only)", () => {

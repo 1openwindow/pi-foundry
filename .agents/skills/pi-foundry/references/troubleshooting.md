@@ -1,6 +1,6 @@
 # pi-foundry skill troubleshooting
 
-The LLM consults this file when `azd up`, `azd ai agent invoke`, or `grant-artifact-rbac` fails. Match the error symptom in the left column, give the user the one-line cause and the one command in the right column.
+The LLM consults this file when `azd up` or `azd ai agent invoke` fails. Match the error symptom in the left column, give the user the one-line cause and the one command in the right column.
 
 ## Bootstrap / template
 
@@ -17,9 +17,7 @@ The LLM consults this file when `azd up`, `azd ai agent invoke`, or `grant-artif
 | `azd env get-values` is empty | No environment selected. `azd env new <name>` or `azd env select <name>`. |
 | Deploy fails with "image pull unauthorized" | Foundry identities lack ACR pull. Run `azd ai agent doctor --no-prompt` and assign AcrPull on the registry. |
 | Invoke returns "configuration: no foundry provider" or model 401 | `PI_OPENAI_*` not set in azd env, or `PI_ARGS` missing `--provider foundry --model <model>`. Reconfigure via `configure-env.mjs`. |
-| Container fails readiness | `PI_MOCK` not set and `PI_OPENAI_API_KEY` missing → runtime rejects start. Set `PI_MOCK=1` for smoke or set the API key. |
-| Artifact links 403/404 | Either `ARTIFACT_PUBLISH_MODE != static-web`, or RBAC missing. Run `grant-artifact-rbac.mjs <agent-name> <storage-account>`. |
-| `ARTIFACT_STATIC_WEB_CONTAINER` shows as `\$web` in `azd env get-values` | Shell double-escaped the `$`. Reset with: `azd env set 'ARTIFACT_STATIC_WEB_CONTAINER=$web'` (single quotes, `KEY=value` form). |
+| Container fails readiness | `PI_MOCK` not set and `PI_OPENAI_API_KEY` missing → runtime rejects start. Set `PI_MOCK=1` for smoke, set the API key, or use `PI_MODEL_AUTH=managed-identity` for keyless auth. |
 | azd env contains custom `AGENT_*` or `FOUNDRY_*` variables (other than `FOUNDRY_PROJECT_ENDPOINT`) | Foundry reserves these prefixes. Remove them with `azd env set <NAME>=` to clear, or rename. |
 
 ## Deploy
@@ -36,7 +34,6 @@ The LLM consults this file when `azd up`, `azd ai agent invoke`, or `grant-artif
 | Symptom | Cause + action |
 |---|---|
 | Response includes `"mock": true` when user expected real model | `PI_MOCK=1` is still set. `azd env set PI_MOCK=0` and `azd up` to roll a new revision. |
-| Streaming SSE shows artifact markdown as token events | Known limitation; ignore the token, use `done.full_text` and `done.artifacts`. (Tracked separately.) |
 | Session continuity not working | Pass the same `agent_session_id`. `verify.mjs --session <id>` reuses sessions. |
 
 ## Runtime image

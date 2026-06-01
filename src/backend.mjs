@@ -1,12 +1,32 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { createServer } from "node:http";
 import { resolve, sep } from "node:path";
 import { createPiRpcAdapter } from "./adapters/pi-rpc.mjs";
-import { createArtifactManager } from "./runtime/artifacts.mjs";
 import { validateRuntimeEnv } from "./contract.mjs";
 
-const port = Number.parseInt(process.env.PORT ?? "8080", 10);
+// Invocations protocol wire constants (see azure-ai-agentserver-invocations).
+const INVOCATION_ID_HEADER = "x-agent-invocation-id";
+const SESSION_ID_HEADER = "x-agent-session-id";
+const REQUEST_ID_HEADER = "x-request-id";
+const CLIENT_REQUEST_ID_HEADER = "x-ms-client-request-id";
+const ERROR_SOURCE_HEADER = "x-platform-error-source";
+const ERROR_DETAIL_HEADER = "x-platform-error-detail";
+const MAX_ERROR_DETAIL_LENGTH = 2048;
+// Foundry-injected default session id; lower priority than the agent_session_id query param.
+const platformSessionId = process.env.FOUNDRY_AGENT_SESSION_ID ?? "";
+const serverVersion = (() => {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    return `pi-foundry/${pkg.version ?? "0.0.0"}`;
+  } catch {
+    return "pi-foundry";
+  }
+})();
+
+// Foundry injects PORT (default 8088 per the invocations contract).
+const port = Number.parseInt(process.env.PORT ?? "8088", 10);
 const host = process.env.HOST ?? "0.0.0.0";
 const requestTimeoutMs = Number.parseInt(process.env.REQUEST_TIMEOUT_MS ?? "300000", 10);
 const piBin = process.env.PI_BIN ?? "pi";
@@ -14,7 +34,6 @@ const piArgs = parseArgs(process.env.PI_ARGS ?? "--mode rpc --no-session");
 const mock = process.env.PI_MOCK === "1" || process.env.PI_MOCK === "true";
 const diagnosticsEnabled = process.env.ENABLE_DIAGNOSTICS === "1" || process.env.ENABLE_DIAGNOSTICS === "true";
 const workspaceDir = resolve(process.env.WORKSPACE_DIR ?? process.cwd());
-const filesDir = resolve(process.env.FILES_DIR ?? `${workspaceDir}/.files`);
 const stateDir = resolve(process.env.STATE_DIR ?? `${process.env.HOME ?? "/tmp"}/.pi-foundry`);
 const sessionsDir = resolve(process.env.SESSIONS_DIR ?? `${stateDir}/sessions`);
 // Default per-runtime, NEVER ~/.pi/agent — that path is the developer's interactive pi config dir
@@ -22,6 +41,12 @@ const sessionsDir = resolve(process.env.SESSIONS_DIR ?? `${stateDir}/sessions`);
 const piAgentDir = resolve(process.env.PI_CODING_AGENT_DIR ?? `${stateDir}/pi-agent`);
 const foundryOpenAIBaseUrl = process.env.PI_OPENAI_BASE_URL ?? process.env.FOUNDRY_OPENAI_BASE_URL;
 const foundryOpenAIModel = process.env.PI_OPENAI_MODEL ?? process.env.FOUNDRY_OPENAI_MODEL;
+// Model auth mode: "apikey" (default, BYOK) or "managed-identity" (keyless, AAD token via
+// DefaultAzureCredential injected per pi process through a pi `!command` apiKey).
+const modelAuth = (process.env.PI_MODEL_AUTH ?? "apikey").trim().toLowerCase() === "managed-identity"
+  ? "managed-identity"
+  : "apikey";
+const modelTokenScope = process.env.FOUNDRY_TOKEN_SCOPE ?? "https://cognitiveservices.azure.com/.default";
 
 // Fail-fast: validate env against the runtime contract before any side effects.
 {
@@ -35,13 +60,6 @@ const foundryOpenAIModel = process.env.PI_OPENAI_MODEL ?? process.env.FOUNDRY_OP
     process.exit(1);
   }
 }
-const artifactPublishMode = process.env.ARTIFACT_PUBLISH_MODE ?? "disabled";
-const artifactStorageAccount = process.env.ARTIFACT_STORAGE_ACCOUNT;
-const artifactStaticWebEndpoint = process.env.ARTIFACT_STATIC_WEB_ENDPOINT;
-const artifactStaticWebContainer = process.env.ARTIFACT_STATIC_WEB_CONTAINER ?? "$web";
-const artifactBlobPrefix = (process.env.ARTIFACT_BLOB_PREFIX ?? "pi-foundry").replace(/^\/+|\/+$/g, "");
-const artifactMaxPublishBytes = Number.parseInt(process.env.ARTIFACT_MAX_PUBLISH_BYTES ?? "104857600", 10);
-const artifactPromptHints = process.env.ARTIFACT_PROMPT_HINTS !== "0" && process.env.ARTIFACT_PROMPT_HINTS !== "false";
 class HttpError extends Error {
   constructor(statusCode, message, details) {
     super(message);
@@ -69,20 +87,8 @@ const piAdapter = createPiRpcAdapter({
   log,
   foundryOpenAIBaseUrl,
   foundryOpenAIModel,
-});
-
-const artifactManager = createArtifactManager({
-  filesDir,
-  artifactPublishMode,
-  artifactStorageAccount,
-  artifactStaticWebEndpoint,
-  artifactStaticWebContainer,
-  artifactBlobPrefix,
-  artifactMaxPublishBytes,
-  artifactPromptHints,
-  HttpError,
-  isInside,
-  log,
+  modelAuth,
+  modelTokenScope,
 });
 
 function sendJson(res, statusCode, payload) {
@@ -189,22 +195,60 @@ function serializeError(error) {
   return { message: String(error) };
 }
 
-function normalizeSessionId(value) {
-  if (value === undefined || value === null || value === "") return randomUUID();
-  if (typeof value !== "string") throw new HttpError(400, "sessionId must be a string");
-  if (!/^[A-Za-z0-9._-]{1,128}$/.test(value)) {
-    throw new HttpError(400, "sessionId must be 1-128 characters and contain only letters, numbers, dots, underscores, or hyphens");
+// Mirrors the SDK's _sanitize_id: validate user-provided IDs (<=256 chars,
+// [a-zA-Z0-9-_.:]) and fall back to a safe value instead of erroring. The ':'
+// is allowed because platform session ids can look like "name:version".
+const ID_RE = /^[a-zA-Z0-9\-_.:]+$/;
+function sanitizeId(value, fallback) {
+  if (typeof value !== "string" || value.length === 0 || value.length > 256 || !ID_RE.test(value)) {
+    return fallback;
   }
   return value;
 }
 
-async function handleInvocation(payload, requestId, sessionIdOverride, onTextDelta) {
+function parseTraceId(traceparent) {
+  if (typeof traceparent !== "string") return undefined;
+  const parts = traceparent.trim().split("-");
+  if (parts.length >= 4 && parts[1].length === 32 && parts[1] !== "0".repeat(32)) return parts[1];
+  return undefined;
+}
+
+function errorCodeForStatus(status) {
+  switch (status) {
+    case 400: return "invalid_request";
+    case 404: return "not_found";
+    case 501: return "not_implemented";
+    case 502: return "upstream_error";
+    case 504: return "upstream_timeout";
+    default: return "internal_error";
+  }
+}
+
+function sendError(res, { status, message, code, source = "upstream", detail, invocationId, sessionId }) {
+  if (invocationId) res.setHeader(INVOCATION_ID_HEADER, invocationId);
+  if (sessionId) res.setHeader(SESSION_ID_HEADER, sessionId);
+  res.setHeader(ERROR_SOURCE_HEADER, source);
+  if (detail) {
+    const value = detail.length > MAX_ERROR_DETAIL_LENGTH
+      ? `${detail.slice(0, MAX_ERROR_DETAIL_LENGTH - "...[truncated]".length)}...[truncated]`
+      : detail;
+    res.setHeader(ERROR_DETAIL_HEADER, value);
+  }
+  const body = JSON.stringify({ error: { code: code ?? errorCodeForStatus(status), message } });
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+  });
+  res.end(body);
+}
+
+async function handleInvocation(payload, invocationId, sessionId, onTextDelta) {
   if (isDiagnosticsRequest(payload)) {
     const diagnostics = await runFoundryOpenAIDiagnostics();
     const diagnosticsText = JSON.stringify(diagnostics, null, 2);
     return {
       statusCode: diagnostics.ok === false ? 502 : 200,
-      body: { output: diagnosticsText, modelText: diagnosticsText, sessionId: normalizeSessionId(sessionIdOverride ?? payload.sessionId), mock: false, artifacts: [] },
+      body: { output: diagnosticsText, modelText: diagnosticsText, sessionId, mock: false },
     };
   }
 
@@ -213,48 +257,32 @@ async function handleInvocation(payload, requestId, sessionIdOverride, onTextDel
     throw new HttpError(400, "Request body must include message, prompt, input, or input.message, or be a non-empty plain text body");
   }
 
-  const sessionId = normalizeSessionId(sessionIdOverride ?? payload.sessionId);
   const sessionRoot = resolve(sessionsDir, sessionId);
   const piSessionDir = resolve(sessionRoot, "pi-sessions");
   const cwd = resolveInvocationCwd(payload.cwd);
   const started = Date.now();
-  const artifactId = `${new Date(started).toISOString().slice(0, 10)}/${requestId}`;
-  const artifactDir = resolve(filesDir, artifactId);
 
-  await Promise.all([mkdir(piSessionDir, { recursive: true }), mkdir(artifactDir, { recursive: true })]);
+  await mkdir(piSessionDir, { recursive: true });
 
   log("info", "invocation_start", {
-    requestId,
+    invocationId,
     sessionId,
     cwd,
     piSessionDir,
-    artifactDir,
     promptLength: prompt.length,
   });
 
   try {
-    const effectivePrompt = artifactManager.withArtifactPromptHint(prompt, artifactDir);
-    const result = await piAdapter.invoke(effectivePrompt, { requestId, sessionId, cwd, piSessionDir, onTextDelta });
+    const result = await piAdapter.invoke(prompt, { requestId: invocationId, sessionId, cwd, piSessionDir, onTextDelta });
     const latencyMs = Date.now() - started;
     const modelText = result.text;
-    let artifacts = [];
-    let artifactPublishError;
-    let output = modelText;
-    try {
-      artifacts = await artifactManager.publishStaticWebArtifacts({ artifactId, artifactDir, requestId, sessionId });
-      output = artifactManager.appendArtifactLinks(output, artifacts);
-    } catch (publishError) {
-      log("error", "artifact_publish_error", { requestId, sessionId, artifactId, error: serializeError(publishError) });
-      artifactPublishError = publishError instanceof Error ? publishError.message : String(publishError);
-      output = `${output.trimEnd()}\n\nArtifact publishing failed: ${artifactPublishError}`;
-    }
+    const output = modelText;
 
     log("info", "invocation_end", {
-      requestId,
+      invocationId,
       sessionId,
       latencyMs,
       outputLength: output.length,
-      artifactCount: artifacts.length,
       mock: result.mock,
       piExitCode: result.piExitCode,
     });
@@ -265,15 +293,13 @@ async function handleInvocation(payload, requestId, sessionIdOverride, onTextDel
         modelText,
         sessionId: result.sessionId,
         mock: result.mock,
-        artifacts,
-        ...(artifactPublishError ? { artifactPublishError } : {}),
       },
     };
   } catch (error) {
     const latencyMs = Date.now() - started;
     const statusCode = error instanceof HttpError ? error.statusCode : 500;
     log("error", "invocation_error", {
-      requestId,
+      invocationId,
       sessionId,
       latencyMs,
       statusCode,
@@ -286,7 +312,6 @@ async function handleInvocation(payload, requestId, sessionIdOverride, onTextDel
 async function ensureRuntimeDirs() {
   await Promise.all([
     mkdir(workspaceDir, { recursive: true }),
-    mkdir(filesDir, { recursive: true }),
     mkdir(piAgentDir, { recursive: true }),
     mkdir(sessionsDir, { recursive: true }),
   ]);
@@ -298,25 +323,6 @@ const openApiSpec = {
   paths: {
     "/health": { get: { responses: { 200: { description: "Health check" } } } },
     "/readiness": { get: { responses: { 200: { description: "Readiness check" } } } },
-    "/artifacts/{path}": {
-      get: {
-        summary: "Serve generated artifact files from FILES_DIR",
-        parameters: [
-          {
-            name: "path",
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-            description: "Relative artifact path under FILES_DIR",
-          },
-        ],
-        responses: {
-          200: { description: "Artifact file" },
-          400: { description: "Invalid artifact path" },
-          404: { description: "Artifact not found" },
-        },
-      },
-    },
     "/invocations": {
       post: {
         summary: "Invoke pi",
@@ -368,49 +374,70 @@ await ensureRuntimeDirs();
 await piAdapter.configureFoundryOpenAIProvider();
 
 const server = createServer(async (req, res) => {
-  const requestId = randomUUID();
-  try {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const method = req.method ?? "GET";
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const path = url.pathname;
 
-    if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/readiness")) {
+  // B2: resolve request correlation id (incoming x-request-id -> UUID).
+  const requestId = sanitizeId(req.headers[REQUEST_ID_HEADER], "") || randomUUID();
+  const clientRequestId = typeof req.headers[CLIENT_REQUEST_ID_HEADER] === "string" ? req.headers[CLIENT_REQUEST_ID_HEADER] : undefined;
+  const traceId = parseTraceId(req.headers.traceparent);
+  const startedAt = Date.now();
+
+  // B2/B3: platform headers on every response. setHeader values survive writeHead
+  // unless explicitly overridden, so this covers JSON, SSE, and error paths.
+  res.setHeader(REQUEST_ID_HEADER, requestId);
+  res.setHeader("x-platform-server", serverVersion);
+
+  // B1: inbound request logging (start + completion).
+  log("info", "request_start", { requestId, method, path, clientRequestId, traceId });
+  res.on("finish", () => {
+    log(res.statusCode >= 400 ? "warn" : "info", "request_end", {
+      requestId, method, path, status: res.statusCode, latencyMs: Date.now() - startedAt,
+    });
+  });
+
+  // Scoped so the catch-all error handler can echo invocation/session ids.
+  let invocationId;
+  let sessionId;
+
+  try {
+    if (method === "GET" && (path === "/health" || path === "/readiness")) {
       sendJson(res, 200, {
-        ok: true,
+        status: "healthy",
         service: "pi-foundry",
         mock,
         workspaceDir,
-        filesDir,
         stateDir,
         sessionsDir,
         piAgentDir,
         foundryOpenAIConfigured: Boolean(process.env.PI_OPENAI_API_KEY ?? process.env.FOUNDRY_OPENAI_API_KEY),
         foundryOpenAIModel: foundryOpenAIModel ?? null,
-        artifactPublishing: {
-          mode: artifactPublishMode,
-          enabled: artifactManager.staticWebPublishingEnabled(),
-          storageAccount: artifactStorageAccount ?? null,
-          staticWebEndpoint: artifactStaticWebEndpoint ?? null,
-          blobPrefix: artifactBlobPrefix,
-        },
         diagnosticsEnabled,
       });
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/invocations/docs/openapi.json") {
+    if (method === "GET" && path === "/invocations/docs/openapi.json") {
       sendJson(res, 200, openApiSpec);
       return;
     }
 
-    if (req.method === "GET" && url.pathname.startsWith("/artifacts/")) {
-      const artifactPath = artifactManager.resolveArtifactPath(url.pathname);
-      await artifactManager.sendArtifactFile(res, artifactPath);
-      return;
-    }
-
-    if (req.method === "POST" && url.pathname === "/invocations") {
+    if (method === "POST" && path === "/invocations") {
       const bodyText = await readBodyText(req);
       const payload = parseInvocationBody(bodyText, req.headers["content-type"] ?? "");
-      const sessionId = url.searchParams.get("agent_session_id") ?? undefined;
+
+      // A2: invocation id from the platform header, else a generated UUID.
+      invocationId = sanitizeId(req.headers[INVOCATION_ID_HEADER], randomUUID());
+      // A3: session id resolution order — agent_session_id query param ->
+      // FOUNDRY_AGENT_SESSION_ID env -> request body sessionId -> generated UUID.
+      sessionId = sanitizeId(
+        url.searchParams.get("agent_session_id") || platformSessionId || payload.sessionId || "",
+        randomUUID(),
+      );
+      // A5: echo invocation/session ids on the response (success and error).
+      res.setHeader(INVOCATION_ID_HEADER, invocationId);
+      res.setHeader(SESSION_ID_HEADER, sessionId);
 
       if (wantsEventStream(req, url)) {
         res.writeHead(200, {
@@ -419,42 +446,53 @@ const server = createServer(async (req, res) => {
           connection: "keep-alive",
         });
 
-        const result = await handleInvocation(payload, requestId, sessionId, (delta) => {
-          writeSse(res, { type: "token", content: delta });
-        });
-        // SSE contract: token events are model deltas ONLY. Server-side trailers
-        // (artifact links, publish failures) MUST NOT be streamed as token events;
-        // clients render them from the structured `artifacts` field in `done`.
-        writeSse(res, {
-          type: "done",
-          full_text: result.body.modelText,
-          session_id: result.body.sessionId,
-          request_id: requestId,
-          artifacts: result.body.artifacts ?? [],
-          ...(result.body.artifactPublishError ? { artifact_publish_error: result.body.artifactPublishError } : {}),
-        });
+        try {
+          const result = await handleInvocation(payload, invocationId, sessionId, (delta) => {
+            writeSse(res, { type: "token", content: delta });
+          });
+          // SSE contract: token events are model deltas ONLY.
+          writeSse(res, {
+            type: "done",
+            full_text: result.body.modelText,
+            session_id: result.body.sessionId,
+            invocation_id: invocationId,
+            request_id: requestId,
+          });
+        } catch (streamError) {
+          // Status line already sent; surface the failure as a terminal SSE event.
+          log("error", "invocation_stream_error", { requestId, invocationId, sessionId, error: serializeError(streamError) });
+          writeSse(res, {
+            type: "error",
+            message: streamError instanceof Error ? streamError.message : String(streamError),
+            invocation_id: invocationId,
+            request_id: requestId,
+          });
+        }
         res.end();
         return;
       }
 
-      const result = await handleInvocation(payload, requestId, sessionId);
-      // Non-SSE JSON response: keep backwards-compat shape. `output` includes the artifact
-      // markdown trailer for simple clients; structured `artifacts` and raw `modelText` are
-      // also available for clients that want to render them separately.
+      const result = await handleInvocation(payload, invocationId, sessionId);
+      // Non-SSE JSON response: `output` is the model text; raw `modelText` is omitted
+      // from the envelope since it duplicates `output`.
       const { modelText: _omitted, ...jsonBody } = result.body;
-      sendJson(res, result.statusCode, { requestId, ...jsonBody });
+      sendJson(res, result.statusCode, { invocationId, requestId, ...jsonBody });
       return;
     }
 
-    if (req.method === "GET" && url.pathname.startsWith("/invocations/")) {
-      sendJson(res, 501, { requestId, error: "Long-running invocation polling is not implemented" });
+    if (method === "GET" && path.startsWith("/invocations/")) {
+      sendError(res, { status: 501, message: "Long-running invocation polling is not implemented" });
       return;
     }
 
-    sendJson(res, 404, { requestId, error: "Not found" });
+    sendError(res, { status: 404, message: "Not found" });
   } catch (error) {
-    const statusCode = error instanceof HttpError ? error.statusCode : 500;
-    sendJson(res, statusCode, { requestId, error: error instanceof Error ? error.message : String(error) });
+    const status = error instanceof HttpError ? error.statusCode : 500;
+    const message = status >= 500
+      ? "Internal server error"
+      : (error instanceof Error ? error.message : String(error));
+    const detail = status >= 500 && error instanceof Error ? `${error.name}: ${error.message}` : undefined;
+    sendError(res, { status, message, detail, invocationId, sessionId });
   }
 });
 
@@ -470,7 +508,6 @@ server.listen(port, host, () => {
     piBin,
     piArgs,
     workspaceDir,
-    filesDir,
     stateDir,
     sessionsDir,
     piAgentDir,

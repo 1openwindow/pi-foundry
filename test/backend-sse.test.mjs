@@ -1,7 +1,5 @@
 // Backend SSE contract regression: token events MUST carry only model deltas;
-// `done` events carry the structured artifacts array and the model-only `full_text`.
-// This locks the fix for the prior bug where server-side trailers (artifact
-// markdown links, publish errors) were emitted as `token` events.
+// `done` events carry the model-only `full_text`.
 
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -90,7 +88,6 @@ describe("backend SSE contract", () => {
       PI_MOCK: "1",
       HOME: tempHome,
       WORKSPACE_DIR: tempHome,
-      FILES_DIR: join(tempHome, "files"),
       STATE_DIR: join(tempHome, "state"),
     });
     await waitForListening(child);
@@ -117,15 +114,11 @@ describe("backend SSE contract", () => {
     assert.equal(tokens.length, 0, `expected no token events in mock mode, got ${tokens.length}`);
     assert.ok(done, "missing done event");
     assert.equal(done.full_text, "mock response: hello");
-    assert.deepEqual(done.artifacts, []);
     assert.equal(typeof done.session_id, "string");
     assert.equal(typeof done.request_id, "string");
   });
 
-  it("done.full_text is model text only; no Artifacts: trailer leaks into SSE", async () => {
-    // Even without publishing configured, regression: the prior code would diff
-    // streamed-vs-final text and emit the difference as a token event. We assert
-    // there is no token carrying the literal model text.
+  it("done.full_text is model text only", async () => {
     const response = await fetch(`http://127.0.0.1:${port}/invocations`, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "text/event-stream" },
@@ -136,10 +129,9 @@ describe("backend SSE contract", () => {
     assert.equal(tokens.length, 0);
     const done = events.find((e) => e.type === "done");
     assert.ok(done.full_text.startsWith("mock response:"));
-    assert.ok(!done.full_text.includes("Artifacts:"), "SSE full_text must not include the markdown Artifacts: trailer");
   });
 
-  it("non-stream JSON response keeps backwards-compatible shape (output + artifacts, no modelText)", async () => {
+  it("non-stream JSON response keeps backwards-compatible shape (output, no modelText)", async () => {
     const response = await fetch(`http://127.0.0.1:${port}/invocations`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -148,7 +140,6 @@ describe("backend SSE contract", () => {
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.output, "mock response: hello");
-    assert.deepEqual(body.artifacts, []);
     assert.equal(body.mock, true);
     assert.equal(typeof body.sessionId, "string");
     assert.equal(typeof body.requestId, "string");

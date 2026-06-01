@@ -2,12 +2,10 @@
   "schemaVersion": "1.0.0",
   "runtime": {
     "workspace": "/workspace",
-    "filesDir": "/files",
     "ports": {
-      "external": 8088,
-      "internalNode": 18080
+      "external": 8088
     },
-    "startupCommand": "/app/runtime/official-invocations/entrypoint.sh"
+    "startupCommand": "node /app/src/backend.mjs"
   },
   "resourceTiers": [
     {
@@ -47,6 +45,10 @@
       "PI_OPENAI_BASE_URL",
       "PI_OPENAI_MODEL"
     ],
+    "requiredWhenLiveKeyless": [
+      "PI_OPENAI_BASE_URL",
+      "PI_OPENAI_MODEL"
+    ],
     "runtime": [
       {
         "name": "PI_ARGS",
@@ -62,6 +64,20 @@
           "true",
           "false"
         ]
+      },
+      {
+        "name": "PI_MODEL_AUTH",
+        "default": "apikey",
+        "accepts": [
+          "apikey",
+          "managed-identity"
+        ],
+        "note": "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no PI_OPENAI_API_KEY needed."
+      },
+      {
+        "name": "FOUNDRY_TOKEN_SCOPE",
+        "default": "https://cognitiveservices.azure.com/.default",
+        "note": "AAD scope used when PI_MODEL_AUTH=managed-identity."
       },
       {
         "name": "REQUEST_TIMEOUT_MS",
@@ -82,10 +98,6 @@
         "default": "/workspace"
       },
       {
-        "name": "FILES_DIR",
-        "default": "/files"
-      },
-      {
         "name": "STATE_DIR",
         "default": "${HOME}/.pi-foundry"
       },
@@ -97,46 +109,6 @@
         "name": "PI_CODING_AGENT_DIR",
         "default": "${STATE_DIR}/pi-agent",
         "note": "Never defaults to ~/.pi/agent; that would clobber a developer's interactive pi config."
-      }
-    ],
-    "artifacts": [
-      {
-        "name": "ARTIFACT_PUBLISH_MODE",
-        "default": "disabled",
-        "accepts": [
-          "disabled",
-          "static-web"
-        ]
-      },
-      {
-        "name": "ARTIFACT_STORAGE_ACCOUNT",
-        "requiredWhen": "ARTIFACT_PUBLISH_MODE=static-web"
-      },
-      {
-        "name": "ARTIFACT_STATIC_WEB_ENDPOINT",
-        "requiredWhen": "ARTIFACT_PUBLISH_MODE=static-web"
-      },
-      {
-        "name": "ARTIFACT_STATIC_WEB_CONTAINER",
-        "default": "$web"
-      },
-      {
-        "name": "ARTIFACT_BLOB_PREFIX",
-        "default": "<agent-name>"
-      },
-      {
-        "name": "ARTIFACT_MAX_PUBLISH_BYTES",
-        "default": "104857600"
-      },
-      {
-        "name": "ARTIFACT_PROMPT_HINTS",
-        "default": "1",
-        "accepts": [
-          "0",
-          "1",
-          "true",
-          "false"
-        ]
       }
     ]
   }

@@ -20,12 +20,12 @@ from.
 
 `Dockerfile.runtime` includes:
 
-- official `azure-ai-agentserver-invocations` Python host (Foundry-facing)
-- Node Pi backend (`src/backend.mjs`) — internal, on `127.0.0.1:18080`
+- Node Pi invocations host (`src/backend.mjs`) — the single Foundry-facing
+  process; serves `GET /readiness` and `POST /invocations` directly on `PORT`
+  (default `8088`). There is no separate Python host or internal proxy port.
 - `pi` CLI (`@earendil-works/pi-coding-agent`)
 - `pi-foundry` CLI (`/usr/local/bin/pi-foundry`) wrapping `src/cli.mjs`
-- runtime dependencies (`uv`, `edge-tts`)
-- `/app/src` (contract.mjs, cli.mjs, backend.mjs, adapters, runtime helpers) and `/app/runtime`
+- `/app/src` (contract.mjs, cli.mjs, backend.mjs, adapters, runtime helpers)
 
 It deliberately does **not** include user Pi agent assets (`.agents/skills`,
 prompts, MCP config, workspace). Those come from the user repo and are layered
@@ -100,7 +100,7 @@ lands; users can change it at any time by editing `Dockerfile`.
 ## Versioning
 
 `pi-foundry-runtime:<tag>` is the contract surface. Breaking changes to env
-contracts, SSE shape, or the artifact protocol should bump the tag. The
+contracts or SSE shape should bump the tag. The
 skill's `references/contract.json` should be regenerated and the new image
 referenced from `bootstrap.mjs` defaults (currently: user supplies on every
 deploy; no in-skill default).

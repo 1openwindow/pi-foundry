@@ -12,9 +12,8 @@ export const contract = {
   schemaVersion: "1.0.0",
   runtime: {
     workspace: "/workspace",
-    filesDir: "/files",
-    ports: { external: 8088, internalNode: 18080 },
-    startupCommand: "/app/runtime/official-invocations/entrypoint.sh",
+    ports: { external: 8088 },
+    startupCommand: "node /app/src/backend.mjs",
   },
   resourceTiers: [
     { cpu: "0.25", memory: "0.5Gi" },
@@ -34,27 +33,22 @@ export const contract = {
       "AZURE_CONTAINER_REGISTRY_ENDPOINT",
     ],
     // Required inside the runtime container, unless PI_MOCK=1.
+    // PI_OPENAI_API_KEY is only required in apikey auth mode; PI_MODEL_AUTH=managed-identity
+    // mints AAD tokens via DefaultAzureCredential instead of a static key.
     requiredWhenLive: ["PI_OPENAI_API_KEY", "PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"],
+    requiredWhenLiveKeyless: ["PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"],
     // Optional runtime knobs with their defaults / accepted shapes.
     runtime: [
       { name: "PI_ARGS", default: "--mode rpc --no-session", note: "Append --provider foundry --model <model> when using PI_OPENAI_*." },
       { name: "PI_MOCK", default: "0", accepts: ["0", "1", "true", "false"] },
+      { name: "PI_MODEL_AUTH", default: "apikey", accepts: ["apikey", "managed-identity"], note: "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no PI_OPENAI_API_KEY needed." },
+      { name: "FOUNDRY_TOKEN_SCOPE", default: "https://cognitiveservices.azure.com/.default", note: "AAD scope used when PI_MODEL_AUTH=managed-identity." },
       { name: "REQUEST_TIMEOUT_MS", default: "300000" },
       { name: "ENABLE_DIAGNOSTICS", default: "0", accepts: ["0", "1", "true", "false"] },
       { name: "WORKSPACE_DIR", default: "/workspace" },
-      { name: "FILES_DIR", default: "/files" },
       { name: "STATE_DIR", default: "${HOME}/.pi-foundry" },
       { name: "SESSIONS_DIR", default: "${STATE_DIR}/sessions" },
       { name: "PI_CODING_AGENT_DIR", default: "${STATE_DIR}/pi-agent", note: "Never defaults to ~/.pi/agent; that would clobber a developer's interactive pi config." },
-    ],
-    artifacts: [
-      { name: "ARTIFACT_PUBLISH_MODE", default: "disabled", accepts: ["disabled", "static-web"] },
-      { name: "ARTIFACT_STORAGE_ACCOUNT", requiredWhen: "ARTIFACT_PUBLISH_MODE=static-web" },
-      { name: "ARTIFACT_STATIC_WEB_ENDPOINT", requiredWhen: "ARTIFACT_PUBLISH_MODE=static-web" },
-      { name: "ARTIFACT_STATIC_WEB_CONTAINER", default: "$web" },
-      { name: "ARTIFACT_BLOB_PREFIX", default: "<agent-name>" },
-      { name: "ARTIFACT_MAX_PUBLISH_BYTES", default: "104857600" },
-      { name: "ARTIFACT_PROMPT_HINTS", default: "1", accepts: ["0", "1", "true", "false"] },
     ],
   },
 };
@@ -62,16 +56,14 @@ export const contract = {
 export function validateRuntimeEnv(env, { mock } = {}) {
   const issues = [];
   if (!mock) {
-    for (const name of contract.env.requiredWhenLive) {
+    const keyless = String(env.PI_MODEL_AUTH ?? "").trim().toLowerCase() === "managed-identity";
+    const required = keyless ? contract.env.requiredWhenLiveKeyless : contract.env.requiredWhenLive;
+    for (const name of required) {
       if (!env[name] || String(env[name]).trim() === "") {
-        issues.push({ severity: "error", name, message: `${name} is required (set it via azd env, or set PI_MOCK=1 for offline mode).` });
-      }
-    }
-  }
-  if (env.ARTIFACT_PUBLISH_MODE === "static-web") {
-    for (const spec of contract.env.artifacts) {
-      if (spec.requiredWhen === "ARTIFACT_PUBLISH_MODE=static-web" && !env[spec.name]) {
-        issues.push({ severity: "error", name: spec.name, message: `${spec.name} is required when ARTIFACT_PUBLISH_MODE=static-web.` });
+        const hint = keyless
+          ? "set it via azd env, or set PI_MOCK=1 for offline mode"
+          : "set it via azd env, set PI_MODEL_AUTH=managed-identity for keyless auth, or set PI_MOCK=1 for offline mode";
+        issues.push({ severity: "error", name, message: `${name} is required (${hint}).` });
       }
     }
   }

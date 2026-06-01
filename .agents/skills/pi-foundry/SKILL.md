@@ -1,18 +1,17 @@
 ---
 name: pi-foundry
-description: Helps a user deploy their existing Pi agent repo to Microsoft Foundry Hosted Agents via a thin azd-compatible layout. Use when the user wants to add Foundry deployment to a local Pi agent repo, configure azd/PI_* settings, deploy with azd up, verify remote invocations, or debug deployment, session, streaming, and artifact issues.
+description: Helps a user deploy their existing Pi agent repo to Microsoft Foundry Hosted Agents via a thin azd-compatible layout. Use when the user wants to add Foundry deployment to a local Pi agent repo, configure azd/PI_* settings, deploy with azd up, verify remote invocations, or debug deployment, session, and streaming issues.
 ---
 
 # Deploy a Pi Agent to Foundry
 
-You are the UX over the **pi-foundry runtime image**. The runtime image owns the Foundry Invocations bridge, Pi RPC lifecycle, sessions, streaming, and artifact publishing. Your job is to get the user from "I have a Pi agent repo" to "it runs on Foundry" with the minimum possible footprint in their repo.
+You are the UX over the **pi-foundry runtime image**. The runtime image owns the Foundry Invocations bridge, Pi RPC lifecycle, sessions, and streaming. Your job is to get the user from "I have a Pi agent repo" to "it runs on Foundry" with the minimum possible footprint in their repo.
 
 The user should be able to say things like:
 
 - "把我这个 Pi agent 部署到 Foundry。"
 - "帮我给当前 repo 加 Foundry 部署。"
 - "为什么 azd up 失败了？"
-- "跑一下 artifact demo。"
 
 ## Mental model
 
@@ -28,7 +27,7 @@ Five thin standard files (this skill bootstraps them):
         |
         v
 Versioned pi-foundry runtime image (the contract product)
-  Foundry Invocations host + Pi RPC backend + artifacts + sessions
+  Foundry Invocations host + Pi RPC backend + sessions
         |
         v
 Microsoft Foundry Hosted Agents
@@ -50,7 +49,6 @@ templates/
 scripts/
   bootstrap.mjs                         cp templates/* into cwd, substitute placeholders
   configure-env.mjs                     wrap azd env set; never print secrets; reads contract
-  grant-artifact-rbac.mjs               post-deploy: grant Storage Blob Data Contributor to agent identities
   verify.mjs                            wrap azd ai agent invoke for smoke
   _lib.mjs                              shared helpers (internal)
 references/
@@ -84,8 +82,7 @@ Ask the user only for what you can't infer:
 - **Runtime image** — there is no public default. The user must provide an image reference like `<acr>.azurecr.io/pi-foundry-runtime:<tag>`. If they don't have one, point them at `docs/runtime-image.md` in the pi-foundry repo for how to build/publish one.
 - **Model** — `PI_OPENAI_MODEL`, e.g. `gpt-4.1-mini`. Default `PI_ARGS` is built from it.
 - **OpenAI-compatible endpoint** — `PI_OPENAI_BASE_URL`, usually `https://<account>.cognitiveservices.azure.com/openai/v1`.
-- **API key** — never as a CLI arg. Either env var name (`--api-key-env`) or `--from-env-file`.
-- **Artifact mode** — optional. `disabled` (default) or `static-web` (requires storage account + endpoint).
+- **API key** — never as a CLI arg. Either env var name (`--api-key-env`) or `--from-env-file`. Or use keyless `--model-auth managed-identity`.
 
 ## Standard workflow
 
@@ -94,11 +91,8 @@ Ask the user only for what you can't infer:
 2. Confirm agent name and runtime image with user.
 3. node <skill>/scripts/bootstrap.mjs --agent-name <name> --runtime-image <image>
 4. node <skill>/scripts/configure-env.mjs --env-name <env> --agent-name <name> --model <model> --base-url <url> --api-key-env <ENV>
-   (add --artifact-mode static-web --artifact-storage-account ... --artifact-static-web-endpoint ... when needed)
 5. azd up
 6. node <skill>/scripts/verify.mjs
-7. If artifacts enabled and the response 403s on links:
-   node <skill>/scripts/grant-artifact-rbac.mjs
 ```
 
 Where `<skill>` is the absolute path to this skill directory, e.g. `~/repos/pi-foundry/.agents/skills/pi-foundry`.
@@ -125,7 +119,7 @@ It validates `--cpu`/`--memory` against `contract.json`'s `resourceTiers`. Allow
 
 - Uses `KEY=value` form so values like `--mode rpc ...` and `$web` aren't reparsed by azd.
 - Refuses to print secrets; logs them as `<redacted>`.
-- When `--from-env-file <path>` is given, strips reserved `AGENT_*`/`FOUNDRY_*` (except `FOUNDRY_PROJECT_ENDPOINT`) and rewrites `ARTIFACT_BLOB_PREFIX` to the current agent name, so values copied from another agent's `.env` don't cross-contaminate.
+- When `--from-env-file <path>` is given, strips reserved `AGENT_*`/`FOUNDRY_*` (except `FOUNDRY_PROJECT_ENDPOINT`), so values copied from another agent's `.env` don't cross-contaminate.
 
 If the user wants additional env vars (e.g. `GITHUB_TOKEN`), tell them to:
 1. `azd env set GITHUB_TOKEN=<value>` directly.
@@ -138,13 +132,6 @@ Just `azd up`. The skill does not wrap or intercept it. If it fails, look at `re
 ### Verify
 
 `verify.mjs` calls `azd ai agent invoke` with sensible defaults. It auto-discovers agent name and version from `agent.yaml` + `azd env` outputs. Pass `--session <id>` to reuse a session, or omit for `--new-session`.
-
-### Artifacts (optional)
-
-When `ARTIFACT_PUBLISH_MODE=static-web`:
-
-1. Ensure `ARTIFACT_STORAGE_ACCOUNT`, `ARTIFACT_STATIC_WEB_ENDPOINT`, `ARTIFACT_STATIC_WEB_CONTAINER=$web`, `ARTIFACT_BLOB_PREFIX` are in azd env.
-2. After deploy, run `grant-artifact-rbac.mjs` to give the agent's managed identities Storage Blob Data Contributor on the storage account. Idempotent.
 
 ## Troubleshooting
 
@@ -162,7 +149,7 @@ Common patterns are in `references/troubleshooting.md`; don't re-derive them in 
 
 ## Re-deploys, env changes
 
-The skill is **stateless and reentrant**. To change model, re-add artifacts, swap regions:
+The skill is **stateless and reentrant**. To change model or swap regions:
 
 ```text
 node <skill>/scripts/configure-env.mjs --agent-name <name> --model <new-model>
@@ -174,7 +161,6 @@ To migrate from the old `.azd/pi-foundry/` layout (legacy users only):
 - Read their `.azd/pi-foundry/pi-foundry.yaml` to recover values.
 - Run `bootstrap.mjs --force` with those values.
 - Delete `.azd/pi-foundry/` and any root `agent.yaml`/`agent.manifest.yaml` generated by the old `render.mjs` (the new templates put them in the same place; check headers — old ones say "Generated by pi-foundry").
-- Run `configure-env.mjs` to ensure `ARTIFACT_BLOB_PREFIX` matches the new agent name.
 
 ## Hard rules (do not violate)
 

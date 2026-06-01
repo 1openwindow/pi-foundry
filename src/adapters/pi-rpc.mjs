@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export function createPiRpcAdapter({
   piBin,
@@ -13,6 +14,8 @@ export function createPiRpcAdapter({
   log,
   foundryOpenAIBaseUrl,
   foundryOpenAIModel,
+  modelAuth = "apikey",
+  modelTokenScope,
 }) {
   const isMock = Boolean(mock);
   function removeArgWithValue(args, name) {
@@ -91,6 +94,9 @@ export function createPiRpcAdapter({
       env: {
         ...process.env,
         PI_CODING_AGENT_DIR: piAgentDir,
+        // Ensure the keyless token command (foundry-token.mjs) sees the resolved scope
+        // even when FOUNDRY_TOKEN_SCOPE was left unset by the operator.
+        ...(modelTokenScope ? { FOUNDRY_TOKEN_SCOPE: modelTokenScope } : {}),
       },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -221,12 +227,26 @@ export function createPiRpcAdapter({
     // Skipped in mock mode and whenever PI_CODING_AGENT_DIR is unsafe (~/.pi/agent is the
     // developer's interactive pi config; backend.mjs already defaults piAgentDir away from it).
     if (mock) return;
-    if (!process.env.PI_OPENAI_API_KEY && !process.env.FOUNDRY_OPENAI_API_KEY) return;
+    const managedIdentity = modelAuth === "managed-identity";
+    // apikey mode needs a key; managed-identity mode mints AAD tokens instead.
+    if (!managedIdentity && !process.env.PI_OPENAI_API_KEY && !process.env.FOUNDRY_OPENAI_API_KEY) return;
     if (!foundryOpenAIBaseUrl || !foundryOpenAIModel) return;
     const home = process.env.HOME ?? "";
     if (home && piAgentDir === resolve(home, ".pi/agent")) {
       log("warn", "foundry_provider_skipped", { reason: "PI_CODING_AGENT_DIR resolves to ~/.pi/agent; refusing to overwrite interactive pi config", piAgentDir });
       return;
+    }
+
+    // apiKey resolution semantics (pi resolveConfigValue):
+    //   "!<cmd>"  -> shell stdout, cached for the pi process lifetime
+    //   "<NAME>"  -> env var lookup, else literal
+    // managed-identity: mint a fresh bearer per pi process via foundry-token.mjs.
+    let apiKey;
+    if (managedIdentity) {
+      const tokenScript = fileURLToPath(new URL("../foundry-token.mjs", import.meta.url));
+      apiKey = `!${process.execPath} ${tokenScript}`;
+    } else {
+      apiKey = process.env.PI_OPENAI_API_KEY ? "PI_OPENAI_API_KEY" : "FOUNDRY_OPENAI_API_KEY";
     }
 
     const modelsPath = resolve(piAgentDir, "models.json");
@@ -235,7 +255,7 @@ export function createPiRpcAdapter({
     providers.foundry = {
       baseUrl: foundryOpenAIBaseUrl,
       api: "openai-responses",
-      apiKey: process.env.PI_OPENAI_API_KEY ? "PI_OPENAI_API_KEY" : "FOUNDRY_OPENAI_API_KEY",
+      apiKey,
       models: [
         {
           id: foundryOpenAIModel,
@@ -256,6 +276,7 @@ export function createPiRpcAdapter({
       model: foundryOpenAIModel,
       baseUrl: foundryOpenAIBaseUrl,
       modelsPath,
+      modelAuth,
     });
   }
 

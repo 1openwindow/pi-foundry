@@ -31,7 +31,9 @@ You also need:
 - an Azure Container Registry your Foundry project can pull from,
 - a published `pi-foundry-runtime` image in that registry (see
   [docs/runtime-image.md](./docs/runtime-image.md)),
-- a Foundry OpenAI-compatible endpoint, model name, and API key.
+- a Foundry OpenAI-compatible endpoint, model name, and either an API key
+  (`PI_MODEL_AUTH=apikey`, default) or a managed-identity data-plane role
+  assignment on the model resource (`PI_MODEL_AUTH=managed-identity`, keyless).
 
 ## Configure the azd environment
 
@@ -56,12 +58,11 @@ azd env set PI_OPENAI_MODEL    '<model>'
 # Pass the secret as KEY=value to avoid azd reparsing leading -- characters:
 azd env set "PI_OPENAI_API_KEY=$PI_OPENAI_API_KEY"
 
-# Optional artifact publishing
-azd env set ARTIFACT_PUBLISH_MODE 'static-web'
-azd env set ARTIFACT_STORAGE_ACCOUNT '<storage-account>'
-azd env set ARTIFACT_STATIC_WEB_ENDPOINT '<https://<account>.z<n>.web.core.windows.net>'
-azd env set "ARTIFACT_STATIC_WEB_CONTAINER='\$web'"
-azd env set ARTIFACT_BLOB_PREFIX '<agent-name>'
+# Keyless alternative (no PI_OPENAI_API_KEY): mint AAD tokens via the Hosted Agent's
+# managed identity. Requires the agent identity to have a Cognitive Services / Azure
+# OpenAI data-plane role (e.g. "Cognitive Services User") on the model resource.
+# azd env set PI_MODEL_AUTH managed-identity
+# azd env set FOUNDRY_TOKEN_SCOPE 'https://cognitiveservices.azure.com/.default'  # default; override only if needed
 ```
 
 Do **not** introduce custom env vars beginning with `AGENT_` or `FOUNDRY_`
@@ -77,11 +78,6 @@ npm test
 
 # Mock-mode backend (no model credentials needed):
 PI_MOCK=1 npm run start:backend
-
-# Local artifact route serving from FILES_DIR:
-mkdir -p .files/demo
-printf '<h1>artifact ok</h1>' > .files/demo/index.html
-curl --noproxy '*' -sS http://127.0.0.1:8080/artifacts/demo/index.html
 ```
 
 If you have Docker locally, you can additionally run the runtime image smoke:
@@ -138,19 +134,6 @@ azd ai agent invoke <agent-name> --protocol invocations --version <v> --timeout 
 # expected: mango
 ```
 
-### Artifact publishing (when enabled)
-
-After a successful `azd up`, grant the agent's managed identities Storage Blob
-Data Contributor on the configured storage account:
-
-```bash
-node <skill>/scripts/grant-artifact-rbac.mjs            # idempotent; safe to re-run
-node <skill>/scripts/grant-artifact-rbac.mjs --dry-run  # preview only
-```
-
-Then invoke the agent with a prompt that asks for downloadable output and
-follow the URLs returned in the response's `artifacts` array.
-
 ## Monitor
 
 ```bash
@@ -196,12 +179,6 @@ The Foundry agent identities must have AcrPull on the registry holding your
 runtime image. Use `azd ai agent show <agent-name> --output json` to read
 identity principal IDs, then grant `AcrPull` on the registry resource.
 
-### Artifact URLs 403
-
-Run `node <skill>/scripts/grant-artifact-rbac.mjs` to grant the deployed
-identities Storage Blob Data Contributor on the artifact storage account.
-RBAC propagation can take ~1 minute.
-
 ## Security notes
 
 - `.azure/` contains local azd state and may contain secrets. The skill's
@@ -215,4 +192,3 @@ RBAC propagation can take ~1 minute.
 
 - [SKILL.md](./.agents/skills/pi-foundry/SKILL.md) — skill contract and workflow
 - [docs/runtime-image.md](./docs/runtime-image.md) — building/publishing the runtime image
-- [docs/artifacts.md](./docs/artifacts.md) — artifact publishing details

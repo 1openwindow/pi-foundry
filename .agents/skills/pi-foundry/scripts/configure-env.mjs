@@ -10,8 +10,8 @@
 //
 // Options:
 //   --env-name <name>                        Create/select azd env if needed.
-//   --from-env-file <path>                   Whitelisted copy from a dotenv file (no AGENT_*, no source ARTIFACT_BLOB_PREFIX).
-//   --agent-name <name>                      (required) Used as default ARTIFACT_BLOB_PREFIX.
+//   --from-env-file <path>                   Whitelisted copy from a dotenv file (no AGENT_*).
+//   --agent-name <name>                      (required) Agent name.
 //   --acr <registry.azurecr.io>
 //   --foundry-project-endpoint <url>
 //   --azure-ai-project-id <resource-id>
@@ -21,12 +21,10 @@
 //   --model <model>                          Sets PI_OPENAI_MODEL and reconstructs PI_ARGS.
 //   --base-url <url>                         Sets PI_OPENAI_BASE_URL.
 //   --api-key-env <ENV_VAR_NAME>             Reads PI_OPENAI_API_KEY from process env (never via flag).
+//   --model-auth <apikey|managed-identity>   Sets PI_MODEL_AUTH. Default apikey. managed-identity is keyless
+//                                            (DefaultAzureCredential); no api key required.
 //   --mock <0|1>                             Default 0.
 //   --timeout-ms <ms>                        Default 600000.
-//   --artifact-mode <disabled|static-web>
-//   --artifact-storage-account <name>
-//   --artifact-static-web-endpoint <url>
-//   --artifact-blob-prefix <prefix>          Defaults to --agent-name when --artifact-mode=static-web.
 
 import { installCrashHandlers, loadContract, parseArgs, parseDotenv, run, tryRun, isSecretName } from "./_lib.mjs";
 import { readFileSync } from "node:fs";
@@ -60,10 +58,6 @@ if (args["from-env-file"]) {
     console.log(`skipping reserved variable from env file: ${name}`);
     delete fileValues[name];
   }
-  if (fileValues.ARTIFACT_BLOB_PREFIX) {
-    console.log(`overriding source ARTIFACT_BLOB_PREFIX=${fileValues.ARTIFACT_BLOB_PREFIX} -> ${args["agent-name"]}`);
-    delete fileValues.ARTIFACT_BLOB_PREFIX;
-  }
 }
 
 // azd-required infra values
@@ -87,24 +81,27 @@ if (model) {
 }
 azdSet("PI_OPENAI_BASE_URL", prefer(args["base-url"], fileValues.PI_OPENAI_BASE_URL));
 
+// Model auth mode: apikey (default, BYOK) or managed-identity (keyless). Validated against
+// the contract so accepted values stay in sync with the runtime.
+const modelAuth = prefer(args["model-auth"], fileValues.PI_MODEL_AUTH);
+if (modelAuth) {
+  const spec = contract.env.runtime.find((knob) => knob.name === "PI_MODEL_AUTH");
+  const accepts = spec?.accepts ?? ["apikey", "managed-identity"];
+  if (!accepts.includes(modelAuth)) {
+    throw new Error(`Invalid --model-auth '${modelAuth}'; expected one of: ${accepts.join(", ")}`);
+  }
+  azdSet("PI_MODEL_AUTH", modelAuth);
+}
+
+const keyless = modelAuth === "managed-identity";
 if (args["api-key-env"]) {
   const secret = process.env[args["api-key-env"]];
   if (!secret) throw new Error(`Environment variable ${args["api-key-env"]} is not set`);
   azdSet("PI_OPENAI_API_KEY", secret);
 } else if (fileValues.PI_OPENAI_API_KEY) {
   azdSet("PI_OPENAI_API_KEY", fileValues.PI_OPENAI_API_KEY);
-}
-
-// Artifacts
-const artifactMode = prefer(args["artifact-mode"], fileValues.ARTIFACT_PUBLISH_MODE);
-if (artifactMode) {
-  azdSet("ARTIFACT_PUBLISH_MODE", artifactMode);
-  azdSet("ARTIFACT_STORAGE_ACCOUNT", prefer(args["artifact-storage-account"], fileValues.ARTIFACT_STORAGE_ACCOUNT));
-  azdSet("ARTIFACT_STATIC_WEB_ENDPOINT", prefer(args["artifact-static-web-endpoint"], fileValues.ARTIFACT_STATIC_WEB_ENDPOINT));
-  if (artifactMode === "static-web") {
-    azdSet("ARTIFACT_STATIC_WEB_CONTAINER", "$web");
-    azdSet("ARTIFACT_BLOB_PREFIX", prefer(args["artifact-blob-prefix"], args["agent-name"]));
-  }
+} else if (!keyless) {
+  console.log("note: no PI_OPENAI_API_KEY provided; set one via --api-key-env, or use --model-auth managed-identity for keyless auth.");
 }
 
 console.log("");

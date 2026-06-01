@@ -7,8 +7,8 @@ You bring the Pi agent (skills, prompts, MCP config, model settings).
 pi-foundry provides two things, and nothing else:
 
 1. **`pi-foundry-runtime`** — a versioned container image that owns the
-   Foundry Invocations protocol, Pi RPC, session mapping, streaming,
-   health/readiness, and artifact publishing.
+   Foundry Invocations protocol, Pi RPC, session mapping, streaming, and
+   health/readiness.
 2. **A Pi skill** at `.agents/skills/pi-foundry/` that bootstraps 5 standard
    `azd` files into your repo and runs `azd up`.
 
@@ -43,13 +43,12 @@ node $SKILL/scripts/bootstrap.mjs       --agent-name <name> --runtime-image <acr
 node $SKILL/scripts/configure-env.mjs   --env-name <env> --agent-name <name> --model <model> --base-url <url> --api-key-env PI_OPENAI_API_KEY
 azd up
 node $SKILL/scripts/verify.mjs
-# if artifact publishing is enabled:
-node $SKILL/scripts/grant-artifact-rbac.mjs
 ```
 
 You need: `azd` with the `azure.ai.agents` extension, a Foundry project, a
 published `pi-foundry-runtime` image your project can pull, and a Foundry
-OpenAI-compatible endpoint + model + API key.
+OpenAI-compatible endpoint + model + an API key (or keyless managed-identity
+auth via `PI_MODEL_AUTH=managed-identity`).
 
 The skill never hardcodes a runtime image, model, or API endpoint — you
 provide them once per deployment.
@@ -65,9 +64,7 @@ from it via `npm run emit:contract`.
 | `PI_OPENAI_API_KEY` / `PI_OPENAI_BASE_URL` / `PI_OPENAI_MODEL` | live (`PI_MOCK!=1`) | OpenAI-compatible triple |
 | `PI_ARGS` | optional | defaults to `--mode rpc --no-session`; skill adds `--provider foundry --model <model>` |
 | `PI_MOCK` | optional | `1` = run without a real model (smoke) |
-| `ARTIFACT_PUBLISH_MODE` | optional | `disabled` (default) or `static-web` |
-| `ARTIFACT_STORAGE_ACCOUNT` / `ARTIFACT_STATIC_WEB_ENDPOINT` | when `static-web` | |
-| `ARTIFACT_BLOB_PREFIX` | optional | defaults to agent name |
+| `PI_MODEL_AUTH` | optional | `apikey` (default) or `managed-identity` (keyless) |
 
 Reserved (Foundry-owned, do not redefine): `AGENT_*`, `FOUNDRY_*`
 (exception: `FOUNDRY_PROJECT_ENDPOINT`).
@@ -83,13 +80,12 @@ pi-foundry doctor     # exit 1 + JSON report when required env is missing
 ## Repository layout
 
 ```
-src/                            adapter, contract SoT, in-container CLI
-runtime/official-invocations/   Foundry Invocations protocol host wrapper
-Dockerfile.runtime              builds pi-foundry-runtime
+src/                            invocations host, contract SoT, in-container CLI
+Dockerfile.runtime              builds pi-foundry-runtime (single Node process)
 .agents/skills/pi-foundry/      the skill (SKILL.md + templates + scripts)
-scripts/                        runtime build/smoke, emit:contract, artifact RBAC
+scripts/                        runtime build/smoke, emit:contract
 test/                           npm test (node --test)
-docs/                           runtime-image, artifacts, reference/
+docs/                           runtime-image, reference/
 ```
 
 ## Local development
@@ -106,5 +102,4 @@ npm run emit:contract                          # refresh skill's contract.json
 - [SKILL.md](./.agents/skills/pi-foundry/SKILL.md) — skill behavior contract (canonical UX doc)
 - [DEPLOY.md](./DEPLOY.md) — manual deploy primitives, verify, monitor, common failures, HTTP API
 - [docs/runtime-image.md](./docs/runtime-image.md) — build / publish the runtime image
-- [docs/artifacts.md](./docs/artifacts.md) — artifact publishing setup
 - [docs/http-api.md](./docs/http-api.md) — raw HTTP shape (for direct callers / debugging)

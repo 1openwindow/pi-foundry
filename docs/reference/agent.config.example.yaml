@@ -31,10 +31,9 @@ foundry:
     memory: 4Gi
 
 workspace:
-  # Docker/Foundry defaults. Keep runtime code, workspace, generated files, and
-  # session state conceptually separate.
+  # Docker/Foundry defaults. Keep runtime code, workspace, and session state
+  # conceptually separate.
   root: /workspace
-  files: /files
 
 sessions:
   enabled: true
@@ -42,21 +41,12 @@ sessions:
   root: /home/node/.pi-foundry/sessions
 
 skills:
-  # Bring your own Pi skills here. Demo skills such as edge-tts and hyperframes
-  # are examples, not runtime requirements.
+  # Bring your own Pi skills here.
   path: .agents/skills
 
 mcp:
   optional: true
   config: mcp.config.json
-
-artifacts:
-  enabled: true
-  # Use static-web when you want remote clickable artifact links. Use disabled
-  # for local-only artifact collection.
-  mode: static-web
-  manifest: artifact-manifest.json
-  maxBytes: 104857600
 
 environment:
   required:
@@ -67,10 +57,5 @@ environment:
     - PI_OPENAI_BASE_URL
     - PI_OPENAI_MODEL
   optional:
-    - ARTIFACT_PUBLISH_MODE
-    - ARTIFACT_STORAGE_ACCOUNT
-    - ARTIFACT_STATIC_WEB_ENDPOINT
-    - ARTIFACT_STATIC_WEB_CONTAINER
-    - ARTIFACT_BLOB_PREFIX
     - GITHUB_TOKEN
     - JIRA_TOKEN

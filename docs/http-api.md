@@ -20,8 +20,7 @@ Response:
   "requestId": "...",
   "output": "...",
   "sessionId": "...",
-  "mock": false,
-  "artifacts": []
+  "mock": false
 }
 ```
 
@@ -41,22 +40,14 @@ terminated by exactly one:
   "type": "done",
   "full_text": "...",
   "session_id": "...",
-  "request_id": "...",
-  "artifacts": [],
-  "artifact_publish_error": "<optional>"
+  "request_id": "..."
 }
 ```
 
 Stream contract:
 
 - `token` events carry **model deltas only**.
-- Server-side trailers (artifact links, publish errors) appear only in `done`
-  as structured fields. Do **not** parse them out of `token` events.
-
-## `GET /artifacts/<path>`
-
-Serves files under `FILES_DIR`. Path traversal outside that directory is
-rejected with `403`.
+- `done` carries the final `full_text` plus correlation ids.
 
 ## `GET /invocations/docs/openapi.json`
 

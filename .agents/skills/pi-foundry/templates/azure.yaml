@@ -20,4 +20,4 @@ services:
         resources:
           cpu: "2"
           memory: 4Gi
-        startupCommand: /app/runtime/official-invocations/entrypoint.sh
+        startupCommand: node /app/src/backend.mjs
