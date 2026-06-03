@@ -91,4 +91,52 @@ describe("validateRuntimeEnv", () => {
     const warnings = issues.filter((i) => i.severity === "warning" && i.name === "FOUNDRY_MY_CUSTOM_THING");
     assert.equal(warnings.length, 1);
   });
+
+  it("errors on an unknown HARNESS value", () => {
+    const issues = validateRuntimeEnv({ HARNESS: "bogus", PI_MOCK: "1" }, { mock: true });
+    const harnessErrors = issues.filter((i) => i.severity === "error" && i.name === "HARNESS");
+    assert.equal(harnessErrors.length, 1);
+  });
+
+  it("treats a blank HARNESS as the default pi (azd expands unset vars to '')", () => {
+    const issues = validateRuntimeEnv({ HARNESS: "", PI_MOCK: "1" }, { mock: true });
+    const harnessErrors = issues.filter((i) => i.severity === "error" && i.name === "HARNESS");
+    assert.deepEqual(harnessErrors, []);
+  });
+
+  it("rejects HARNESS=copilot with PI_MODEL_AUTH=managed-identity (BYOK is apikey only)", () => {
+    const issues = validateRuntimeEnv(
+      { HARNESS: "copilot", PI_MODEL_AUTH: "managed-identity", PI_OPENAI_BASE_URL: "https://x", PI_OPENAI_MODEL: "gpt-4.1-mini" },
+      { mock: false },
+    );
+    const authErrors = issues.filter((i) => i.severity === "error" && i.name === "PI_MODEL_AUTH");
+    assert.equal(authErrors.length, 1);
+    // copilot has no keyless path, so the API key is still required.
+    assert.ok(issues.some((i) => i.severity === "error" && i.name === "PI_OPENAI_API_KEY"));
+  });
+
+  it("accepts HARNESS=copilot with the apikey triple", () => {
+    const issues = validateRuntimeEnv(
+      { HARNESS: "copilot", PI_OPENAI_API_KEY: "sk-x", PI_OPENAI_BASE_URL: "https://x", PI_OPENAI_MODEL: "gpt-4.1-mini" },
+      { mock: false },
+    );
+    assert.deepEqual(issues.filter((i) => i.severity === "error"), []);
+  });
+
+  it("rejects an invalid COPILOT_WIRE_API only under the copilot harness", () => {
+    const base = { PI_OPENAI_API_KEY: "sk-x", PI_OPENAI_BASE_URL: "https://x", PI_OPENAI_MODEL: "gpt-4.1-mini" };
+    const copilot = validateRuntimeEnv({ HARNESS: "copilot", COPILOT_WIRE_API: "bogus", ...base }, { mock: false });
+    assert.ok(copilot.some((i) => i.severity === "error" && i.name === "COPILOT_WIRE_API"));
+    // pi never reads COPILOT_*, so the same typo must not error there.
+    const pi = validateRuntimeEnv({ COPILOT_WIRE_API: "bogus", ...base }, { mock: false });
+    assert.equal(pi.filter((i) => i.name === "COPILOT_WIRE_API").length, 0);
+  });
+
+  it("rejects an invalid COPILOT_PROVIDER_TYPE under the copilot harness", () => {
+    const issues = validateRuntimeEnv(
+      { HARNESS: "copilot", COPILOT_PROVIDER_TYPE: "anthropic", PI_OPENAI_API_KEY: "sk-x", PI_OPENAI_BASE_URL: "https://x", PI_OPENAI_MODEL: "gpt-4.1-mini" },
+      { mock: false },
+    );
+    assert.ok(issues.some((i) => i.severity === "error" && i.name === "COPILOT_PROVIDER_TYPE"));
+  });
 });
