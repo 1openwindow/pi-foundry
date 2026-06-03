@@ -12,8 +12,8 @@
 //   --env-name <name>                        Create/select azd env if needed.
 //   --from-env-file <path>                   Whitelisted copy from a dotenv file (no AGENT_*).
 //   --agent-name <name>                      (required) Agent name.
-//   --harness <pi|copilot>                   Runtime selector. Default pi. copilot requires the
-//                                            ghcp-foundry-runtime image and apikey BYOK (no managed-identity).
+//   --harness <pi|copilot>                   Runtime selector. Default pi. copilot needs the
+//                                            ghcp-foundry-runtime image and apikey BYOK.
 //   --acr <registry.azurecr.io>
 //   --foundry-project-endpoint <url>
 //   --azure-ai-project-id <resource-id>
@@ -87,9 +87,8 @@ azdSet("PI_MOCK", prefer(args.mock, fileValues.PI_MOCK, "0"));
 azdSet("REQUEST_TIMEOUT_MS", prefer(args["timeout-ms"], fileValues.REQUEST_TIMEOUT_MS, "600000"));
 azdSet("ENABLE_DIAGNOSTICS", prefer(fileValues.ENABLE_DIAGNOSTICS, "0"));
 
-// Harness selector: pi (default) or copilot. Validated against the contract so accepted
-// values stay in sync with the runtime. Written only when chosen — the runtime defaults a
-// missing/blank HARNESS to pi, so pi users keep a clean azd env (mirrors PI_MODEL_AUTH).
+// Harness selector: pi (default) or copilot, validated against the contract.
+// Written only when chosen; the runtime defaults a missing HARNESS to pi.
 const harness = prefer(args.harness, fileValues.HARNESS);
 if (harness) {
   const spec = contract.env.runtime.find((knob) => knob.name === "HARNESS");
