@@ -88,9 +88,10 @@ azdSet("REQUEST_TIMEOUT_MS", prefer(args["timeout-ms"], fileValues.REQUEST_TIMEO
 azdSet("ENABLE_DIAGNOSTICS", prefer(fileValues.ENABLE_DIAGNOSTICS, "0"));
 
 // Harness selector: pi (default) or copilot. Validated against the contract so accepted
-// values stay in sync with the runtime. Always set so the template never expands HARNESS to "".
-const harness = prefer(args.harness, fileValues.HARNESS, "pi");
-{
+// values stay in sync with the runtime. Written only when chosen — the runtime defaults a
+// missing/blank HARNESS to pi, so pi users keep a clean azd env (mirrors PI_MODEL_AUTH).
+const harness = prefer(args.harness, fileValues.HARNESS);
+if (harness) {
   const spec = contract.env.runtime.find((knob) => knob.name === "HARNESS");
   const accepts = spec?.accepts ?? ["pi", "copilot"];
   if (!accepts.includes(harness)) {
