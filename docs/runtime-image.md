@@ -1,8 +1,21 @@
 # open-foundry runtime images
 
-The runtime images are the **versioned contract product** of this repo. The
-skill-managed deployment expects a published runtime image referenced from the
-user repo's thin Dockerfile:
+> **Most users never build this.** The deploy skill points your repo at a
+> published runtime image — pick one from the table below and you're done. The
+> rest of this page is for publishing or customizing your **own** runtime image.
+
+## Pick an image
+
+The image name is the harness selector — there is no separate `HARNESS` setting
+to put in `azd` env, `agent.yaml`, or `agent.manifest.yaml`.
+
+| Image | Harness | Contents | Model auth |
+|---|---|---|---|
+| `pi-foundry-runtime:<tag>` | `pi` | pi-coding-agent + pi adapter | API key or managed identity |
+| `ghcp-foundry-runtime:<tag>` | `copilot` | GitHub Copilot SDK + Copilot adapter | API key only |
+
+The skill's `bootstrap.mjs` writes a thin Dockerfile in your repo that pulls the
+image you choose:
 
 ```dockerfile
 ARG OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag>
@@ -12,59 +25,26 @@ WORKDIR /app
 COPY . /workspace
 ```
 
-The image name is the harness selector:
+Use the public GHCR image for trials, or publish your own (below) to a registry
+your Foundry project can pull from. Your agent assets (`.agents/skills`, prompts,
+MCP config, workspace) are **not** in the image — they come from your repo and
+land in `/workspace`.
 
-| Image | Harness | Contents | Model auth |
-|---|---|---|---|
-| `pi-foundry-runtime:<tag>` | `pi` | pi-coding-agent + pi adapter | API key or managed identity |
-| `ghcp-foundry-runtime:<tag>` | `copilot` | GitHub Copilot SDK + Copilot adapter | API key only |
+## Inspect an image
 
-The skill's `bootstrap.mjs` writes that Dockerfile but does **not** ship a
-private default image. Use the public GHCR image for trials, or publish your own
-to a registry your Foundry project can pull from.
-
-## What is in the image
-
-`Dockerfile.runtime` is multi-stage: a shared `base` plus one thin stage per
-harness, selected with `docker build --target pi|copilot`. Each image bakes
-`ENV HARNESS=<value>`, so there is no separate `HARNESS` setting to put in `azd`
-env, `agent.yaml`, or `agent.manifest.yaml`.
-
-Both images include:
-
-- Node invocations host (`src/backend.mjs`) — the single Foundry-facing
-  process; serves `GET /readiness` and `POST /invocations` directly on `PORT`
-  (default `8088`). There is no separate Python host or internal proxy port.
-- `open-foundry` CLI (`/usr/local/bin/open-foundry`) wrapping `src/cli.mjs`
-- `/app/src` (contract.mjs, cli.mjs, backend.mjs, adapters, runtime helpers)
-
-Harness-specific contents are intentionally separate. `package.json` carries
-only shared runtime deps; each harness stage installs its own agent:
-
-- `pi-foundry-runtime` installs `@earendil-works/pi-coding-agent` only.
-- `ghcp-foundry-runtime` installs `@github/copilot-sdk` / Copilot CLI runtime
-  only.
-
-The runtime image deliberately does **not** include user agent assets
-(`.agents/skills`, prompts, MCP config, workspace). Those come from the user repo
-and are layered into `/workspace` by the thin adapter Dockerfile bootstrapped
-into that repo.
-
-## Self-describing contract
-
-Inside the image, two commands surface the runtime contract without booting
-the backend:
+The runtime serves `GET /readiness` and `POST /invocations` on `PORT` (default
+`8088`). Every image also self-describes its env contract without booting the
+backend:
 
 ```bash
-open-foundry contract    # full env / tier / reserved-prefix contract as JSON
-open-foundry doctor      # validate current env; exit 1 on missing required vars (redacts secrets)
+open-foundry contract    # env / tier / reserved-prefix contract as JSON
+open-foundry doctor      # validate current env; exit 1 on missing required vars (secrets redacted)
 open-foundry version
 ```
 
-The contract is the same data structure consumed by `src/backend.mjs` for
-startup fail-fast validation and by `.agents/skills/open-foundry/references/contract.json`
-for the skill. The skill's JSON is regenerated from `src/contract.mjs` via
-`npm run emit:contract`, so there is one source of truth.
+---
+
+The sections below are only for **building and publishing your own image**.
 
 ## Build locally (requires Docker)
 
@@ -89,13 +69,13 @@ OPEN_FOUNDRY_RUNTIME_IMAGE=pi-foundry-runtime:local npm run runtime:smoke
 OPEN_FOUNDRY_RUNTIME_IMAGE=ghcp-foundry-runtime:local npm run runtime:smoke
 ```
 
-The smoke test runs the container with `OF_MOCK=1`, mounts a throwaway
-tempdir as `/workspace` (override with `WORKSPACE=<path>` to point at a real
-agent workspace), polls `/readiness`, and posts a mock invocation.
+Runs the container with `OF_MOCK=1`, mounts a throwaway tempdir as `/workspace`
+(override with `WORKSPACE=<path>`), polls `/readiness`, and posts a mock
+invocation.
 
 ## Build remotely with ACR (no local Docker required)
 
-Use `az acr build` directly against this repo and `Dockerfile.runtime`.
+Requires `az login` and AcrPush on the target registry.
 
 Build the Pi image:
 
@@ -119,12 +99,9 @@ az acr build \
   .
 ```
 
-Requires `az login` and AcrPush on the target registry.
-
 ## Publish
 
-Tag and push each runtime image to the registry your Foundry project can pull
-from:
+Tag and push each image to the registry your Foundry project can pull from:
 
 ```bash
 docker push <acr>.azurecr.io/pi-foundry-runtime:<tag>
@@ -137,67 +114,47 @@ Or, for a non-ACR registry:
 OPEN_FOUNDRY_RUNTIME_IMAGE=ghcr.io/<org>/pi-foundry-runtime:<tag> npm run runtime:build
 docker push ghcr.io/<org>/pi-foundry-runtime:<tag>
 
-docker build --pull=false --target copilot -f Dockerfile.runtime -t ghcr.io/<org>/ghcp-foundry-runtime:<tag> .
+OPEN_FOUNDRY_RUNTIME_TARGET=copilot OPEN_FOUNDRY_RUNTIME_IMAGE=ghcr.io/<org>/ghcp-foundry-runtime:<tag> npm run runtime:build
 docker push ghcr.io/<org>/ghcp-foundry-runtime:<tag>
 ```
 
-If users will rely on ACR remote builds via `azd deploy`, make sure the registry
-holding the runtime image is one the Foundry agent identities have `AcrPull`
-on. The skill's `bootstrap.mjs --runtime-image <ref>` is where that reference
-lands; users can change it at any time by editing `Dockerfile`.
+For `azd deploy` ACR remote builds, the registry holding the image must be one
+your Foundry agent identities have `AcrPull` on. Change the image reference any
+time by editing `Dockerfile`.
 
 ## Publish via GitHub Actions (GHCR)
 
-`.github/workflows/runtime-image.yml` builds `Dockerfile.runtime` once per
-harness and publishes both image names:
+`.github/workflows/runtime-image.yml` publishes both image names on a version
+tag:
 
 - `ghcr.io/<owner>/pi-foundry-runtime`
 - `ghcr.io/<owner>/ghcp-foundry-runtime`
-
-Triggers:
-
-- Push a tag `v<X.Y.Z>` → publishes `:<X.Y.Z>`, `:<X.Y>`, and `:latest` on both images.
-- `workflow_dispatch` → publishes `:sha-<short>` and `:manual-<run-number>` on both images (never `:latest`).
-
-Publishing is two-phase and all-or-nothing: a `build` matrix builds every
-harness with `fail-fast` off (so each harness's real build status is visible),
-and a `publish` job gated on `needs: build` runs only if **every** harness built.
-A single harness failure therefore publishes nothing — no half-released version
-skew.
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-**Gotcha — the workflow file must already exist on the default branch before the
-tag push.** GitHub only runs a workflow for a tag if that workflow is present in
-the commit the tag points at *and* reachable from the default branch. If you add
-`runtime-image.yml` on a feature branch and push a tag from there, **no run is
-triggered**. Fix: merge the workflow to `main` first, then (re)create and push
-the tag:
+- A version tag `v<X.Y.Z>` publishes `:<X.Y.Z>`, `:<X.Y>`, and `:latest`.
+- `workflow_dispatch` publishes `:sha-<short>` and `:manual-<run-number>` (never `:latest`).
+- Publishing is all-or-nothing: if any harness fails to build, nothing is
+  published — so the two images never drift apart in version.
 
-```bash
-git checkout main && git merge --ff-only <branch> && git push origin main
-git tag -d v0.1.0 && git push origin :refs/tags/v0.1.0   # if the tag already existed
-git tag v0.1.0 && git push origin v0.1.0
-```
-
-**Make both packages public** so Foundry (or anyone) can pull without auth:
-GitHub → your profile/org → Packages → `pi-foundry-runtime` and
-`ghcp-foundry-runtime` → Package settings → Change visibility → Public. Verify
-anonymously:
+The first time each package is published, confirm it is public so Foundry can
+pull without auth (GitHub → Packages → the package → change visibility), then
+verify anonymously:
 
 ```bash
 docker logout ghcr.io && docker pull ghcr.io/<owner>/pi-foundry-runtime:<tag>
 docker logout ghcr.io && docker pull ghcr.io/<owner>/ghcp-foundry-runtime:<tag>
 ```
 
+> The workflow must already be on the default branch before you push the tag, or
+> no run triggers. If you just merged it, push `main` first, then create and push
+> the tag.
 
 ## Versioning
 
 `pi-foundry-runtime:<tag>` and `ghcp-foundry-runtime:<tag>` are the contract
-surfaces. Breaking changes to env contracts or SSE shape should bump the tag.
-The skill's `references/contract.json` should be regenerated. Users choose the
-runtime image with `bootstrap.mjs --runtime-image <ref>`; there is no in-skill
-private default.
+surface: bump the tag on breaking changes to the env contract or SSE shape.
+Choose the image with `bootstrap.mjs --runtime-image <ref>`.
