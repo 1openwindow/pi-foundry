@@ -27,8 +27,11 @@ RUN apt-get update \
     && chmod +x /usr/local/bin/open-foundry
 
 # pi harness only: the pi-coding-agent CLI is spawned over JSON-RPC.
+# Running `npm -g` as root populates the default cache (/home/node/.npm) with
+# root-owned files; hand it back to node so the later `npm ci` (USER node) works.
 RUN if [ "$HARNESS" = "pi" ]; then \
-        npm install -g @earendil-works/pi-coding-agent@0.76.0 --ignore-scripts; \
+        npm install -g @earendil-works/pi-coding-agent@0.76.0 --ignore-scripts \
+        && chown -R node:node /home/node/.npm; \
     fi
 
 USER node
