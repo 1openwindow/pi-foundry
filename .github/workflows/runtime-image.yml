@@ -2,18 +2,21 @@ name: runtime-image
 
 # Builds Dockerfile.runtime and publishes it to GHCR.
 #
-# Multi-stage Dockerfile: the harness is the build `--target`. One image is built
-# per harness (same version tags, different name):
+# Multi-stage Dockerfile: the harness is the build `--target`. One image per
+# harness (same version tags, different name):
 #   target pi       ->  ghcr.io/<owner>/pi-foundry-runtime:<tag>
 #   target copilot  ->  ghcr.io/<owner>/ghcp-foundry-runtime:<tag>
+#
+# Two phases make publishing all-or-nothing:
+#   build   — builds every harness with push:false (fail-fast off, so every
+#             harness's real build status is visible) and caches its layers.
+#   publish — needs `build`; only runs if EVERY harness built. So a single
+#             harness failure publishes nothing — no half-released version skew.
 #
 # Triggers:
 #   - push a tag like  v0.2.0   → publishes  :0.2.0  :0.2  :latest  on both images
 #   - workflow_dispatch  → publishes :sha-<short> and :manual-<run-number>
 #                          on both images, never :latest
-#
-# fail-fast is off so a break in one harness never cancels the other's build or
-# publish; each harness's real status is always visible.
 #
 # Repo settings required (one-time):
 #   Settings → Actions → General → Workflow permissions = Read and write
@@ -32,7 +35,32 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
+  # Phase 1: build every harness, push nothing. fail-fast is off so one harness
+  # breaking never cancels the other — both real statuses show up. Layers are
+  # cached so the publish phase reuses them instead of rebuilding.
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [pi, copilot]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runtime
+          target: ${{ matrix.target }}
+          push: false
+          cache-to: type=gha,scope=runtime-${{ matrix.target }},mode=max
+          cache-from: type=gha,scope=runtime-${{ matrix.target }}
+          provenance: false
+
+  # Phase 2: publish. `needs: build` gates this on EVERY build matrix leg
+  # succeeding, so a single harness failure means nothing is published.
+  publish:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -67,12 +95,15 @@ jobs:
             type=sha,prefix=sha-,enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=manual-${{ github.run_number }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
+      # Layers come from the build phase's cache, so this assembles and pushes
+      # without rebuilding.
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.runtime
           target: ${{ matrix.target }}
           push: true
+          cache-from: type=gha,scope=runtime-${{ matrix.target }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false

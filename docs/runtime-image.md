@@ -148,8 +148,8 @@ lands; users can change it at any time by editing `Dockerfile`.
 
 ## Publish via GitHub Actions (GHCR)
 
-`.github/workflows/runtime-image.yml` builds `Dockerfile.runtime` twice and
-pushes both image names:
+`.github/workflows/runtime-image.yml` builds `Dockerfile.runtime` once per
+harness and publishes both image names:
 
 - `ghcr.io/<owner>/pi-foundry-runtime`
 - `ghcr.io/<owner>/ghcp-foundry-runtime`
@@ -159,8 +159,11 @@ Triggers:
 - Push a tag `v<X.Y.Z>` → publishes `:<X.Y.Z>`, `:<X.Y>`, and `:latest` on both images.
 - `workflow_dispatch` → publishes `:sha-<short>` and `:manual-<run-number>` on both images (never `:latest`).
 
-`fail-fast` is off, so a break in one harness never cancels the other's
-build or publish.
+Publishing is two-phase and all-or-nothing: a `build` matrix builds every
+harness with `fail-fast` off (so each harness's real build status is visible),
+and a `publish` job gated on `needs: build` runs only if **every** harness built.
+A single harness failure therefore publishes nothing — no half-released version
+skew.
 
 ```bash
 git tag v0.1.0
