@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// bootstrap.mjs — copy pi-foundry templates into the user's repo and substitute placeholders.
+// bootstrap.mjs — copy open-foundry templates into the user's repo and substitute placeholders.
 //
-// Intended use: invoked by the pi-foundry skill (or directly by a developer) from inside
+// Intended use: invoked by the open-foundry skill (or directly by a developer) from inside
 // the user's Pi agent repo. Writes 5 files at the repo root:
 //   Dockerfile, azure.yaml, agent.yaml, agent.manifest.yaml, .dockerignore
-// No .azd/pi-foundry/ framework, no lock files, no rendered intermediates.
+// No .azd/open-foundry/ framework, no lock files, no rendered intermediates.
 //
 // Usage:
 //   bootstrap.mjs --agent-name <name> --runtime-image <acr>/pi-foundry-runtime:<tag> [options]
 //
 // Options:
 //   --agent-name <name>         (required) Foundry Hosted Agent name. Lowercase letters/numbers/hyphens.
-//   --runtime-image <image>     (required) Full pi-foundry runtime image reference.
+//   --runtime-image <image>     (required) Full open-foundry runtime image reference.
 //   --display-name <name>       Human-readable name. Defaults from agent name.
 //   --cpu <value>               Default 2. Must be a valid Hosted Agent tier (see contract.json).
 //   --memory <value>            Default 4Gi. Must pair with --cpu per contract.
@@ -86,7 +86,7 @@ for (const target of targets) {
 }
 
 console.log("");
-console.log(`pi-foundry bootstrap complete for ${agentName}.`);
+console.log(`open-foundry bootstrap complete for ${agentName}.`);
 
 const harness = inferHarnessFromRuntimeImage(runtimeImage);
 if (harness === "unknown") {
@@ -126,9 +126,9 @@ async function exists(path) {
 }
 
 async function guardCwdIsNotSkillRepo() {
-  // Refuse to bootstrap inside the pi-foundry source checkout itself.
-  if (await exists("Dockerfile.runtime") && await exists(".agents/skills/pi-foundry/SKILL.md")) {
-    throw new Error("Current directory looks like the pi-foundry source repo. Run bootstrap from the user's Pi agent repo instead.");
+  // Refuse to bootstrap inside the open-foundry source checkout itself.
+  if (await exists("Dockerfile.runtime") && await exists(".agents/skills/open-foundry/SKILL.md")) {
+    throw new Error("Current directory looks like the open-foundry source repo. Run bootstrap from the user's Pi agent repo instead.");
   }
 }
 

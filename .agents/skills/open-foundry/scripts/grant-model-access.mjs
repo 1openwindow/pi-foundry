@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // grant-model-access.mjs — keyless (managed-identity) prerequisite.
 //
-// When PI_MODEL_AUTH=managed-identity, the Hosted Agent calls the model with its
+// When OF_MODEL_AUTH=managed-identity, the Hosted Agent calls the model with its
 // own Instance Identity instead of an API key. That identity needs a data-plane
 // role on the model account, or invocations fail with 401/403. This script grants
 // `Cognitive Services OpenAI User` to the agent's Instance Identity on the model

@@ -81,11 +81,11 @@ describe("backend SSE contract", () => {
   before(async () => {
     // Pick an unlikely-collide port; OS will reject if taken and we'll see it in test logs.
     port = 30000 + Math.floor(Math.random() * 5000);
-    tempHome = mkdtempSync(join(tmpdir(), "pi-foundry-sse-"));
+    tempHome = mkdtempSync(join(tmpdir(), "open-foundry-sse-"));
     child = spawnBackend({
       PORT: String(port),
       HOST: "127.0.0.1",
-      PI_MOCK: "1",
+      OF_MOCK: "1",
       HOME: tempHome,
       WORKSPACE_DIR: tempHome,
       STATE_DIR: join(tempHome, "state"),

@@ -9,7 +9,7 @@ node_modules/
 
 # Runtime state
 .files/
-.pi-foundry/
+.open-foundry/
 *.log
 
 # Coding-agent local metadata

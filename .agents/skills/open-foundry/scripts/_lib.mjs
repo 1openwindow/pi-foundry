@@ -1,5 +1,5 @@
-// Shared helpers for pi-foundry skill scripts.
-// These scripts live inside the pi-foundry repo (skill location) and are NOT
+// Shared helpers for open-foundry skill scripts.
+// These scripts live inside the open-foundry repo (skill location) and are NOT
 // copied into user repos. They run with cwd = user repo.
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
@@ -137,8 +137,8 @@ export function inferHarnessFromRuntimeImage(image) {
 }
 
 // Parse the runtime image out of a bootstrapped Dockerfile. The template is:
-//   ARG PI_FOUNDRY_RUNTIME_IMAGE=<image>
-//   FROM ${PI_FOUNDRY_RUNTIME_IMAGE}
+//   ARG OPEN_FOUNDRY_RUNTIME_IMAGE=<image>
+//   FROM ${OPEN_FOUNDRY_RUNTIME_IMAGE}
 // but a user may have inlined the image into FROM directly, so handle both.
 export function runtimeImageFromDockerfileText(text) {
   if (!text) return undefined;
@@ -146,12 +146,12 @@ export function runtimeImageFromDockerfileText(text) {
   let fromRef;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
-    const arg = line.match(/^ARG\s+PI_FOUNDRY_RUNTIME_IMAGE=(.+)$/i);
+    const arg = line.match(/^ARG\s+OPEN_FOUNDRY_RUNTIME_IMAGE=(.+)$/i);
     if (arg) argDefault = arg[1].trim();
     const from = line.match(/^FROM\s+(\S+)/i);
     if (from) fromRef = from[1].trim();
   }
-  if (fromRef && /^\$\{?PI_FOUNDRY_RUNTIME_IMAGE\}?$/.test(fromRef)) return argDefault;
+  if (fromRef && /^\$\{?OPEN_FOUNDRY_RUNTIME_IMAGE\}?$/.test(fromRef)) return argDefault;
   return fromRef ?? argDefault;
 }
 

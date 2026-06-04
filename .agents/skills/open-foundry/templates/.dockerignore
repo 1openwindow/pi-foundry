@@ -1,4 +1,4 @@
-# pi-foundry skill bootstrap .dockerignore. Free to edit/extend.
+# open-foundry skill bootstrap .dockerignore. Free to edit/extend.
 .git
 .gitignore
 .azure

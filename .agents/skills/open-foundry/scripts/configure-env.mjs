@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// configure-env.mjs — set azd env values for a pi-foundry deployment.
+// configure-env.mjs — set azd env values for a open-foundry deployment.
 //
 // Never prints secret values. Reads secrets only from process env or a dotenv file;
 // never accepts secrets as command-line args. Knows the env contract from
@@ -18,10 +18,10 @@
 //   --azure-subscription-id <id>
 //   --azure-tenant-id <id>
 //   --azure-location <region>
-//   --model <model>                          Sets PI_OPENAI_MODEL and reconstructs PI_ARGS.
-//   --base-url <url>                         Sets PI_OPENAI_BASE_URL.
-//   --api-key-env <ENV_VAR_NAME>             Reads PI_OPENAI_API_KEY from process env (never via flag).
-//   --model-auth <apikey|managed-identity>   Sets PI_MODEL_AUTH. Default apikey. managed-identity is keyless
+//   --model <model>                          Sets OF_OPENAI_MODEL and reconstructs PI_ARGS.
+//   --base-url <url>                         Sets OF_OPENAI_BASE_URL.
+//   --api-key-env <ENV_VAR_NAME>             Reads OF_OPENAI_API_KEY from process env (never via flag).
+//   --model-auth <apikey|managed-identity>   Sets OF_MODEL_AUTH. Default apikey. managed-identity is keyless
 //                                            (DefaultAzureCredential); no api key required.
 //   --mock <0|1>                             Default 0.
 //   --timeout-ms <ms>                        Default 600000.
@@ -82,7 +82,7 @@ azdSet("AZURE_AI_PROJECT_ID", projectId);
 azdSet("AZURE_CONTAINER_REGISTRY_ENDPOINT", prefer(args.acr, fileValues.AZURE_CONTAINER_REGISTRY_ENDPOINT));
 
 // Runtime base
-azdSet("PI_MOCK", prefer(args.mock, fileValues.PI_MOCK, "0"));
+azdSet("OF_MOCK", prefer(args.mock, fileValues.OF_MOCK, "0"));
 azdSet("REQUEST_TIMEOUT_MS", prefer(args["timeout-ms"], fileValues.REQUEST_TIMEOUT_MS, "600000"));
 azdSet("ENABLE_DIAGNOSTICS", prefer(fileValues.ENABLE_DIAGNOSTICS, "0"));
 
@@ -90,20 +90,20 @@ azdSet("ENABLE_DIAGNOSTICS", prefer(fileValues.ENABLE_DIAGNOSTICS, "0"));
 // Copilot's apikey-only BYOK constraint is enforced by the runtime contract at startup.
 
 // Model
-const model = prefer(args.model, fileValues.PI_OPENAI_MODEL);
+const model = prefer(args.model, fileValues.OF_OPENAI_MODEL);
 if (model) {
-  azdSet("PI_OPENAI_MODEL", model);
+  azdSet("OF_OPENAI_MODEL", model);
   azdSet("PI_ARGS", prefer(fileValues.PI_ARGS, `--mode rpc --no-session --provider foundry --model ${model}`));
 }
-azdSet("PI_OPENAI_BASE_URL", prefer(args["base-url"], fileValues.PI_OPENAI_BASE_URL));
+azdSet("OF_OPENAI_BASE_URL", prefer(args["base-url"], fileValues.OF_OPENAI_BASE_URL));
 
 // Model auth mode: apikey (default, BYOK) or managed-identity (keyless). Validated against
 // the contract so accepted values stay in sync with the runtime. When the runtime image is
-// Copilot, force the explicit apikey default so any stale azd PI_MODEL_AUTH=managed-identity
+// Copilot, force the explicit apikey default so any stale azd OF_MODEL_AUTH=managed-identity
 // from a prior pi deployment is overwritten before deploy.
-const modelAuth = resolveModelAuth({ argValue: args["model-auth"], fileValue: fileValues.PI_MODEL_AUTH, harness: dockerfileHarness.harness });
+const modelAuth = resolveModelAuth({ argValue: args["model-auth"], fileValue: fileValues.OF_MODEL_AUTH, harness: dockerfileHarness.harness });
 if (modelAuth) {
-  const spec = contract.env.runtime.find((knob) => knob.name === "PI_MODEL_AUTH");
+  const spec = contract.env.runtime.find((knob) => knob.name === "OF_MODEL_AUTH");
   const accepts = spec?.accepts ?? ["apikey", "managed-identity"];
   if (!accepts.includes(modelAuth)) {
     throw new Error(`Invalid --model-auth '${modelAuth}'; expected one of: ${accepts.join(", ")}`);
@@ -123,16 +123,16 @@ if (keyless) {
     console.log("note: could not confirm the harness from ./Dockerfile; if this is a Copilot (ghcp-foundry-runtime) image, managed-identity will be rejected at startup (Copilot BYOK is API-key only).");
   }
 }
-if (modelAuth) azdSet("PI_MODEL_AUTH", modelAuth);
+if (modelAuth) azdSet("OF_MODEL_AUTH", modelAuth);
 
 if (args["api-key-env"]) {
   const secret = process.env[args["api-key-env"]];
   if (!secret) throw new Error(`Environment variable ${args["api-key-env"]} is not set`);
-  azdSet("PI_OPENAI_API_KEY", secret);
-} else if (fileValues.PI_OPENAI_API_KEY) {
-  azdSet("PI_OPENAI_API_KEY", fileValues.PI_OPENAI_API_KEY);
+  azdSet("OF_OPENAI_API_KEY", secret);
+} else if (fileValues.OF_OPENAI_API_KEY) {
+  azdSet("OF_OPENAI_API_KEY", fileValues.OF_OPENAI_API_KEY);
 } else if (!keyless) {
-  console.log("note: no PI_OPENAI_API_KEY provided; set one via --api-key-env, or use --model-auth managed-identity for keyless auth.");
+  console.log("note: no OF_OPENAI_API_KEY provided; set one via --api-key-env, or use --model-auth managed-identity for keyless auth.");
 }
 
 console.log("");

@@ -19,9 +19,9 @@ const platformSessionId = process.env.FOUNDRY_AGENT_SESSION_ID ?? "";
 const serverVersion = (() => {
   try {
     const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-    return `pi-foundry/${pkg.version ?? "0.0.0"}`;
+    return `open-foundry/${pkg.version ?? "0.0.0"}`;
   } catch {
-    return "pi-foundry";
+    return "open-foundry";
   }
 })();
 
@@ -38,19 +38,19 @@ const sseHeartbeatMs = Number.parseInt(process.env.SSE_HEARTBEAT_MS ?? "20000", 
 const harness = (process.env.HARNESS ?? "").trim().toLowerCase() || "pi";
 const piBin = process.env.PI_BIN ?? "pi";
 const piArgs = parseArgs(process.env.PI_ARGS ?? "--mode rpc --no-session");
-const mock = process.env.PI_MOCK === "1" || process.env.PI_MOCK === "true";
+const mock = process.env.OF_MOCK === "1" || process.env.OF_MOCK === "true";
 const diagnosticsEnabled = process.env.ENABLE_DIAGNOSTICS === "1" || process.env.ENABLE_DIAGNOSTICS === "true";
 const workspaceDir = resolve(process.env.WORKSPACE_DIR ?? process.cwd());
-const stateDir = resolve(process.env.STATE_DIR ?? `${process.env.HOME ?? "/tmp"}/.pi-foundry`);
+const stateDir = resolve(process.env.STATE_DIR ?? `${process.env.HOME ?? "/tmp"}/.open-foundry`);
 const sessionsDir = resolve(process.env.SESSIONS_DIR ?? `${stateDir}/sessions`);
 // Default per-runtime, NEVER ~/.pi/agent — that path is the developer's interactive pi config dir
 // and clobbering it from a server-side process is a footgun.
 const piAgentDir = resolve(process.env.PI_CODING_AGENT_DIR ?? `${stateDir}/pi-agent`);
-const foundryOpenAIBaseUrl = process.env.PI_OPENAI_BASE_URL ?? process.env.FOUNDRY_OPENAI_BASE_URL;
-const foundryOpenAIModel = process.env.PI_OPENAI_MODEL ?? process.env.FOUNDRY_OPENAI_MODEL;
+const foundryOpenAIBaseUrl = process.env.OF_OPENAI_BASE_URL;
+const foundryOpenAIModel = process.env.OF_OPENAI_MODEL;
 // Model auth mode: "apikey" (default, BYOK) or "managed-identity" (keyless, AAD token via
 // DefaultAzureCredential injected per pi process through a pi `!command` apiKey).
-const modelAuth = (process.env.PI_MODEL_AUTH ?? "apikey").trim().toLowerCase() === "managed-identity"
+const modelAuth = (process.env.OF_MODEL_AUTH ?? "apikey").trim().toLowerCase() === "managed-identity"
   ? "managed-identity"
   : "apikey";
 const modelTokenScope = process.env.FOUNDRY_TOKEN_SCOPE ?? "https://cognitiveservices.azure.com/.default";
@@ -63,7 +63,7 @@ const modelTokenScope = process.env.FOUNDRY_TOKEN_SCOPE ?? "https://cognitiveser
   for (const warning of warnings) console.warn(JSON.stringify({ level: "warn", message: "env_warning", time: new Date().toISOString(), ...warning }));
   if (errors.length > 0) {
     for (const error of errors) console.error(JSON.stringify({ level: "error", message: "env_error", time: new Date().toISOString(), ...error }));
-    console.error(JSON.stringify({ level: "error", message: "startup_aborted", time: new Date().toISOString(), reason: "missing required runtime env; run `pi-foundry doctor` inside the container for details." }));
+    console.error(JSON.stringify({ level: "error", message: "startup_aborted", time: new Date().toISOString(), reason: "missing required runtime env; run `open-foundry doctor` inside the container for details." }));
     process.exit(1);
   }
 }
@@ -145,8 +145,8 @@ function isDiagnosticsRequest(payload) {
 }
 
 async function runFoundryOpenAIDiagnostics() {
-  const apiKey = process.env.PI_OPENAI_API_KEY ?? process.env.FOUNDRY_OPENAI_API_KEY;
-  if (!apiKey) return { configured: false, error: "PI_OPENAI_API_KEY is not set" };
+  const apiKey = process.env.OF_OPENAI_API_KEY;
+  if (!apiKey) return { configured: false, error: "OF_OPENAI_API_KEY is not set" };
 
   const started = Date.now();
   const response = await fetch(`${foundryOpenAIBaseUrl.replace(/\/+$/, "")}/responses`, {
@@ -327,7 +327,7 @@ async function ensureRuntimeDirs() {
 
 const openApiSpec = {
   openapi: "3.0.3",
-  info: { title: "pi-foundry Invocations API", version: "0.1.0" },
+  info: { title: "open-foundry Invocations API", version: "0.1.0" },
   paths: {
     "/health": { get: { responses: { 200: { description: "Health check" } } } },
     "/readiness": { get: { responses: { 200: { description: "Readiness check" } } } },
@@ -414,13 +414,13 @@ const server = createServer(async (req, res) => {
     if (method === "GET" && (path === "/health" || path === "/readiness")) {
       sendJson(res, 200, {
         status: "healthy",
-        service: "pi-foundry",
+        service: "open-foundry",
         mock,
         workspaceDir,
         stateDir,
         sessionsDir,
         piAgentDir,
-        foundryOpenAIConfigured: Boolean(process.env.PI_OPENAI_API_KEY ?? process.env.FOUNDRY_OPENAI_API_KEY),
+        foundryOpenAIConfigured: Boolean(process.env.OF_OPENAI_API_KEY),
         foundryOpenAIModel: foundryOpenAIModel ?? null,
         diagnosticsEnabled,
       });

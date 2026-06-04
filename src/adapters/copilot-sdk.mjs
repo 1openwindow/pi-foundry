@@ -25,7 +25,7 @@ export function createCopilotSdkAdapter({
   let provider;
 
   function resolveApiKey() {
-    return process.env.PI_OPENAI_API_KEY ?? process.env.FOUNDRY_OPENAI_API_KEY;
+    return process.env.OF_OPENAI_API_KEY;
   }
 
   // Azure's BYOK provider expects the resource root; pi-style base URLs often

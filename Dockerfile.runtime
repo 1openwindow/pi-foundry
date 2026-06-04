@@ -12,19 +12,19 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     HOME=/home/node \
     WORKSPACE_DIR=/workspace \
-    STATE_DIR=/home/node/.pi-foundry \
-    SESSIONS_DIR=/home/node/.pi-foundry/sessions \
-    PI_CODING_AGENT_DIR=/home/node/.pi-foundry/pi-agent \
+    STATE_DIR=/home/node/.open-foundry \
+    SESSIONS_DIR=/home/node/.open-foundry/sessions \
+    PI_CODING_AGENT_DIR=/home/node/.open-foundry/pi-agent \
     PI_ARGS="--mode rpc --no-session"
 
 # Pure Node runtime: a single Node process serves /readiness and POST /invocations.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app /workspace /home/node/.pi-foundry \
+    && mkdir -p /app /workspace /home/node/.open-foundry \
     && chown -R node:node /app /workspace /home/node \
-    && printf '#!/bin/sh\nexec node /app/src/cli.mjs "$@"\n' > /usr/local/bin/pi-foundry \
-    && chmod +x /usr/local/bin/pi-foundry
+    && printf '#!/bin/sh\nexec node /app/src/cli.mjs "$@"\n' > /usr/local/bin/open-foundry \
+    && chmod +x /usr/local/bin/open-foundry
 
 # pi harness only: the pi-coding-agent CLI is spawned over JSON-RPC.
 RUN if [ "$HARNESS" = "pi" ]; then \

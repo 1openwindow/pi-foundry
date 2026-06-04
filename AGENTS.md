@@ -1,4 +1,4 @@
-# AGENTS.md — pi-foundry design principles
+# AGENTS.md — open-foundry design principles
 
 Guidance for any agent or contributor working on this repo. Keep changes aligned
 with these. When a tradeoff isn't covered here, ask.
@@ -24,7 +24,7 @@ with these. When a tradeoff isn't covered here, ask.
    commands. Invest there.
 
 6. **Docs are concise and user-facing.**
-   Write from the user's task perspective, not pi-foundry's development perspective.
+   Write from the user's task perspective, not open-foundry's development perspective.
    State the value and the action; drop the internal rationale.
 
 ## Releasing the runtime image

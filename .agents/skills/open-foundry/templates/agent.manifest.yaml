@@ -1,9 +1,9 @@
-# pi-foundry skill bootstrap Hosted Agent manifest. Free to edit.
+# open-foundry skill bootstrap Hosted Agent manifest. Free to edit.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/AgentSchema/refs/heads/main/schemas/v1.0/AgentManifest.yaml
 name: <agent-name>
 displayName: "<display-name>"
 description: >
-  Pi agent deployed to Foundry via the pi-foundry skill.
+  Pi agent deployed to Foundry via the open-foundry skill.
 metadata:
   tags:
     - AI Agent Hosting
@@ -19,17 +19,17 @@ template:
   environment_variables:
     - name: PI_ARGS
       value: "{{PI_ARGS}}"
-    - name: PI_MOCK
-      value: "{{PI_MOCK}}"
-    - name: PI_MODEL_AUTH
-      value: "{{PI_MODEL_AUTH}}"
+    - name: OF_MOCK
+      value: "{{OF_MOCK}}"
+    - name: OF_MODEL_AUTH
+      value: "{{OF_MODEL_AUTH}}"
     - name: REQUEST_TIMEOUT_MS
       value: "{{REQUEST_TIMEOUT_MS}}"
     - name: ENABLE_DIAGNOSTICS
       value: "{{ENABLE_DIAGNOSTICS}}"
-    - name: PI_OPENAI_API_KEY
-      value: "{{PI_OPENAI_API_KEY}}"
-    - name: PI_OPENAI_BASE_URL
-      value: "{{PI_OPENAI_BASE_URL}}"
-    - name: PI_OPENAI_MODEL
-      value: "{{PI_OPENAI_MODEL}}"
+    - name: OF_OPENAI_API_KEY
+      value: "{{OF_OPENAI_API_KEY}}"
+    - name: OF_OPENAI_BASE_URL
+      value: "{{OF_OPENAI_BASE_URL}}"
+    - name: OF_OPENAI_MODEL
+      value: "{{OF_OPENAI_MODEL}}"

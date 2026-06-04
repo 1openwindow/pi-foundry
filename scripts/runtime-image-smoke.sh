@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_TAG="${PI_FOUNDRY_RUNTIME_IMAGE:-pi-foundry-runtime:local}"
+IMAGE_TAG="${OPEN_FOUNDRY_RUNTIME_IMAGE:-pi-foundry-runtime:local}"
 HOST_PORT="${HOST_PORT:-8125}"
 CONTAINER_NAME="pi-foundry-runtime-smoke-${HOST_PORT}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-# A smoke run only needs *some* workspace mount; the content is irrelevant in PI_MOCK mode.
+# A smoke run only needs *some* workspace mount; the content is irrelevant in OF_MOCK mode.
 # Caller may override WORKSPACE to point at a real agent workspace.
 if [[ -z "${WORKSPACE:-}" ]]; then
-  WORKSPACE="$(mktemp -d -t pi-foundry-smoke-ws.XXXXXX)"
+  WORKSPACE="$(mktemp -d -t open-foundry-smoke-ws.XXXXXX)"
   trap 'rm -rf "${WORKSPACE}"' EXIT
 fi
 
@@ -33,7 +33,7 @@ echo "Port:      ${HOST_PORT}"
 docker run -d \
   --name "${CONTAINER_NAME}" \
   -p "${HOST_PORT}:8088" \
-  -e PI_MOCK=1 \
+  -e OF_MOCK=1 \
   -v "${WORKSPACE}:/workspace" \
   "${IMAGE_TAG}" >/dev/null
 

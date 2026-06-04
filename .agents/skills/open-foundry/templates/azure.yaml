@@ -1,4 +1,4 @@
-# pi-foundry skill bootstrap azd file. Free to edit.
+# open-foundry skill bootstrap azd file. Free to edit.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 name: <agent-name>
 requiredVersions:

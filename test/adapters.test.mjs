@@ -12,14 +12,14 @@ class HttpError extends Error {
 const baseCtx = {
   piBin: "pi",
   piArgs: [],
-  piAgentDir: "/tmp/pi-foundry-test/pi-agent",
+  piAgentDir: "/tmp/open-foundry-test/pi-agent",
   requestTimeoutMs: 1000,
   mock: true,
   HttpError,
   log: () => {},
   foundryOpenAIBaseUrl: "https://example.openai.azure.com/openai/v1",
   foundryOpenAIModel: "gpt-4.1-mini",
-  stateDir: "/tmp/pi-foundry-test/state",
+  stateDir: "/tmp/open-foundry-test/state",
 };
 
 describe("createAdapter", () => {

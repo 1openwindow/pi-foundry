@@ -1,10 +1,10 @@
 # Example high-level configuration for bringing your own Pi agent to Foundry.
 #
 # This file is a reference for advanced/high-level agent configuration ideas.
-# The default BYO adapter now uses .azd/pi-foundry/pi-foundry.yaml as its
+# The default BYO adapter now uses .azd/open-foundry/open-foundry.yaml as its
 # deployment source of truth. Runtime secrets are still supplied through azd env.
 
-name: pi-foundry
+name: open-foundry
 displayName: My Pi Agent on Foundry
 description: Bring your own Pi skills, MCP servers, tools, prompts, and configuration to Microsoft Foundry.
 
@@ -19,7 +19,7 @@ runtime:
     - --no-session
   provider: foundry
   # Replace with your Foundry model/deployment name, and keep it aligned with
-  # PI_OPENAI_MODEL and the --model value in PI_ARGS.
+  # OF_OPENAI_MODEL and the --model value in PI_ARGS.
   model: <foundry-model-or-deployment>
 
 foundry:
@@ -38,7 +38,7 @@ workspace:
 sessions:
   enabled: true
   mode: pi-session-dir
-  root: /home/node/.pi-foundry/sessions
+  root: /home/node/.open-foundry/sessions
 
 skills:
   # Bring your own Pi skills here.
@@ -53,9 +53,9 @@ environment:
     - PI_ARGS
     - REQUEST_TIMEOUT_MS
   requiredForRealModel:
-    - PI_OPENAI_API_KEY
-    - PI_OPENAI_BASE_URL
-    - PI_OPENAI_MODEL
+    - OF_OPENAI_API_KEY
+    - OF_OPENAI_BASE_URL
+    - OF_OPENAI_MODEL
   optional:
     - GITHUB_TOKEN
     - JIRA_TOKEN

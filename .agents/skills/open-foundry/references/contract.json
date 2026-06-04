@@ -41,13 +41,13 @@
       "AZURE_CONTAINER_REGISTRY_ENDPOINT"
     ],
     "requiredWhenLive": [
-      "PI_OPENAI_API_KEY",
-      "PI_OPENAI_BASE_URL",
-      "PI_OPENAI_MODEL"
+      "OF_OPENAI_API_KEY",
+      "OF_OPENAI_BASE_URL",
+      "OF_OPENAI_MODEL"
     ],
     "requiredWhenLiveKeyless": [
-      "PI_OPENAI_BASE_URL",
-      "PI_OPENAI_MODEL"
+      "OF_OPENAI_BASE_URL",
+      "OF_OPENAI_MODEL"
     ],
     "runtime": [
       {
@@ -62,10 +62,10 @@
       {
         "name": "PI_ARGS",
         "default": "--mode rpc --no-session",
-        "note": "Append --provider foundry --model <model> when using PI_OPENAI_*."
+        "note": "Append --provider foundry --model <model> when using OF_OPENAI_*."
       },
       {
-        "name": "PI_MOCK",
+        "name": "OF_MOCK",
         "default": "0",
         "accepts": [
           "0",
@@ -75,18 +75,18 @@
         ]
       },
       {
-        "name": "PI_MODEL_AUTH",
+        "name": "OF_MODEL_AUTH",
         "default": "apikey",
         "accepts": [
           "apikey",
           "managed-identity"
         ],
-        "note": "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no PI_OPENAI_API_KEY needed. Not supported with HARNESS=copilot."
+        "note": "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no OF_OPENAI_API_KEY needed. Not supported with HARNESS=copilot."
       },
       {
         "name": "FOUNDRY_TOKEN_SCOPE",
         "default": "https://cognitiveservices.azure.com/.default",
-        "note": "AAD scope used when PI_MODEL_AUTH=managed-identity."
+        "note": "AAD scope used when OF_MODEL_AUTH=managed-identity."
       },
       {
         "name": "COPILOT_PROVIDER_TYPE",
@@ -95,7 +95,7 @@
           "azure",
           "openai"
         ],
-        "note": "HARNESS=copilot BYOK provider type. Auto-detected from PI_OPENAI_BASE_URL (azure when the host is *.azure.com)."
+        "note": "HARNESS=copilot BYOK provider type. Auto-detected from OF_OPENAI_BASE_URL (azure when the host is *.azure.com)."
       },
       {
         "name": "COPILOT_WIRE_API",
@@ -136,7 +136,7 @@
       },
       {
         "name": "STATE_DIR",
-        "default": "${HOME}/.pi-foundry"
+        "default": "${HOME}/.open-foundry"
       },
       {
         "name": "SESSIONS_DIR",

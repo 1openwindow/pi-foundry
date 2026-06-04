@@ -1,14 +1,14 @@
-# Deploy pi-foundry to a Foundry Hosted Agent
+# Deploy open-foundry to a Foundry Hosted Agent
 
 This document is a generic, copy-pasteable remote-deploy reference. It assumes
-you already used the pi-foundry skill (or `node <skill>/scripts/bootstrap.mjs`)
+you already used the open-foundry skill (or `node <skill>/scripts/bootstrap.mjs`)
 to add the 5 standard files (`Dockerfile`, `azure.yaml`, `agent.yaml`,
 `agent.manifest.yaml`, `.dockerignore`) to your agent repo.
 
 Substitute `<placeholders>` with your own values. **No defaults point at any
-maintainer endpoint** — pi-foundry fails fast when required values are missing.
+maintainer endpoint** — open-foundry fails fast when required values are missing.
 
-For day-to-day deploys, the recommended interface is the pi-foundry skill; ask
+For day-to-day deploys, the recommended interface is the open-foundry skill; ask
 your agent to deploy the current repo. The commands below are the underlying
 primitives.
 
@@ -38,9 +38,9 @@ You also need:
   [docs/runtime-image.md](./docs/runtime-image.md)): `pi-foundry-runtime` for Pi
   or `ghcp-foundry-runtime` for GitHub Copilot,
 - a Foundry OpenAI-compatible endpoint, model name, and an API key
-  (`PI_MODEL_AUTH=apikey`, default). The Pi runtime also supports a
+  (`OF_MODEL_AUTH=apikey`, default). The Pi runtime also supports a
   managed-identity data-plane role assignment on the model resource
-  (`PI_MODEL_AUTH=managed-identity`, keyless); the GitHub Copilot runtime does
+  (`OF_MODEL_AUTH=managed-identity`, keyless); the GitHub Copilot runtime does
   not.
 
 The runtime image name is the harness selector. Do not set a separate `HARNESS`
@@ -61,29 +61,29 @@ azd env set AZURE_LOCATION        '<region>'             # e.g. eastus2
 azd env set FOUNDRY_PROJECT_ENDPOINT          '<https://...>'
 azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<acr>.azurecr.io'
 
-# Live model config. Inside the runtime, PI_OPENAI_* is required unless PI_MOCK=1.
-azd env set PI_MOCK 0
+# Live model config. Inside the runtime, OF_OPENAI_* is required unless OF_MOCK=1.
+azd env set OF_MOCK 0
 azd env set 'PI_ARGS=--mode rpc --no-session --provider foundry --model <model>'
-azd env set PI_OPENAI_BASE_URL '<https://<account>.cognitiveservices.azure.com/openai/v1>'
-azd env set PI_OPENAI_MODEL    '<model>'
+azd env set OF_OPENAI_BASE_URL '<https://<account>.cognitiveservices.azure.com/openai/v1>'
+azd env set OF_OPENAI_MODEL    '<model>'
 # Pass the secret as KEY=value to avoid azd reparsing leading -- characters:
-azd env set "PI_OPENAI_API_KEY=$PI_OPENAI_API_KEY"
+azd env set "OF_OPENAI_API_KEY=$OF_OPENAI_API_KEY"
 
-# Pi runtime only: keyless alternative (no PI_OPENAI_API_KEY), minting AAD tokens
+# Pi runtime only: keyless alternative (no OF_OPENAI_API_KEY), minting AAD tokens
 # via the Hosted Agent's managed identity. Copilot BYOK is API-key only; do not
-# use PI_MODEL_AUTH=managed-identity with ghcp-foundry-runtime. Keyless Pi requires
+# use OF_MODEL_AUTH=managed-identity with ghcp-foundry-runtime. Keyless Pi requires
 # the agent identity to have a Cognitive Services / Azure OpenAI data-plane role
 # on the model resource. After the first `azd deploy` (the identity only exists
 # once deployed), grant it with:
 #   node <skill>/scripts/grant-model-access.mjs   # Cognitive Services OpenAI User, idempotent
 # then redeploy. Manual equivalent:
-# azd env set PI_MODEL_AUTH managed-identity
+# azd env set OF_MODEL_AUTH managed-identity
 # azd env set FOUNDRY_TOKEN_SCOPE 'https://cognitiveservices.azure.com/.default'  # default; override only if needed
 ```
 
 Do **not** introduce custom env vars beginning with `AGENT_` or `FOUNDRY_`
 (except the documented `FOUNDRY_PROJECT_ENDPOINT`). Foundry reserves those
-prefixes and will reject or overwrite them. Use `PI_*` or your own prefixes
+prefixes and will reject or overwrite them. Use `OF_*` or your own prefixes
 instead.
 
 ## Local validation before deploy
@@ -93,23 +93,23 @@ instead.
 npm test
 
 # Mock-mode backend (no model credentials needed):
-PI_MOCK=1 npm run start:backend
+OF_MOCK=1 npm run start:backend
 ```
 
 If you have Docker locally, you can additionally run the runtime image smoke:
 
 ```bash
-PI_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag> npm run runtime:smoke
-PI_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/ghcp-foundry-runtime:<tag> npm run runtime:smoke
+OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag> npm run runtime:smoke
+OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/ghcp-foundry-runtime:<tag> npm run runtime:smoke
 ```
 
 Inside the runtime container (or attached to a running one), validate the
 contract by hand:
 
 ```bash
-pi-foundry contract          # full contract JSON, single source of truth
-pi-foundry doctor            # exit 1 + JSON report when required env is missing
-pi-foundry version
+open-foundry contract          # full contract JSON, single source of truth
+open-foundry doctor            # exit 1 + JSON report when required env is missing
+open-foundry version
 ```
 
 ## Deploy
@@ -188,28 +188,28 @@ azd ai agent doctor                              --no-prompt
 ### Startup aborted: missing required env
 
 ```text
-{"level":"error","message":"PI_OPENAI_API_KEY is required (set it via azd env, or set PI_MOCK=1 for offline mode).", ...}
+{"level":"error","message":"OF_OPENAI_API_KEY is required (set it via azd env, or set OF_MOCK=1 for offline mode).", ...}
 {"level":"error","message":"startup_aborted", ...}
 ```
 
 The runtime refuses to start without the live triple. Either set
-`PI_OPENAI_API_KEY` / `PI_OPENAI_BASE_URL` / `PI_OPENAI_MODEL`, or set
-`PI_MOCK=1` for an offline smoke run. Re-run `azd deploy --no-prompt` after
+`OF_OPENAI_API_KEY` / `OF_OPENAI_BASE_URL` / `OF_OPENAI_MODEL`, or set
+`OF_MOCK=1` for an offline smoke run. Re-run `azd deploy --no-prompt` after
 fixing.
 
 ### `No API key found for the selected model`
 
 `PI_ARGS` points at a provider/model that pi cannot resolve. Make sure
-`PI_OPENAI_MODEL` matches the model in `PI_ARGS` and the key is set.
+`OF_OPENAI_MODEL` matches the model in `PI_ARGS` and the key is set.
 
 ### `Environment variable 'FOUNDRY_*' is reserved` / `'AGENT_*' is reserved`
 
-You set a custom variable using a reserved prefix. Use `PI_*` or another
+You set a custom variable using a reserved prefix. Use `OF_*` or another
 prefix instead.
 
 ### Remote `fetch failed` to the OpenAI-compatible endpoint
 
-Confirm `PI_OPENAI_BASE_URL` is reachable from the Foundry sandbox. The
+Confirm `OF_OPENAI_BASE_URL` is reachable from the Foundry sandbox. The
 `*.cognitiveservices.azure.com/openai/v1` form generally works; project-scoped
 `*.services.ai.azure.com/openai/v1` may not, depending on your Foundry
 configuration.
@@ -225,11 +225,11 @@ identity principal IDs, then grant `AcrPull` on the registry resource.
 - `.azure/` contains local azd state and may contain secrets. The skill's
   generated `.dockerignore` excludes it; keep your `.gitignore` doing the same.
 - `azd ai agent show --output json` can print env values including
-  `PI_OPENAI_API_KEY`; do not paste full output publicly.
-- pi-foundry does not currently integrate Key Vault; rotate any keys you set
+  `OF_OPENAI_API_KEY`; do not paste full output publicly.
+- open-foundry does not currently integrate Key Vault; rotate any keys you set
   via `azd env set` if they are shared during development.
 
 ## See also
 
-- [SKILL.md](./.agents/skills/pi-foundry/SKILL.md) — skill contract and workflow
+- [SKILL.md](./.agents/skills/open-foundry/SKILL.md) — skill contract and workflow
 - [docs/runtime-image.md](./docs/runtime-image.md) — building/publishing the runtime image

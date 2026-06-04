@@ -1,9 +1,9 @@
-// pi-foundry runtime image contract — single source of truth.
+// open-foundry runtime image contract — single source of truth.
 //
 // This file is consumed in three places:
 //   1. src/backend.mjs           validates env at startup, fails fast on missing required vars.
-//   2. src/cli.mjs               exposes `pi-foundry contract` and `pi-foundry doctor`.
-//   3. .agents/skills/pi-foundry/references/contract.json
+//   2. src/cli.mjs               exposes `open-foundry contract` and `open-foundry doctor`.
+//   3. .agents/skills/open-foundry/references/contract.json
 //                                regenerated from this file by scripts/emit-contract.mjs.
 //
 // Edit here; then run `node scripts/emit-contract.mjs` to refresh the skill JSON.
@@ -32,26 +32,26 @@ export const contract = {
       "FOUNDRY_PROJECT_ENDPOINT",
       "AZURE_CONTAINER_REGISTRY_ENDPOINT",
     ],
-    // Required inside the runtime container, unless PI_MOCK=1.
-    // PI_OPENAI_API_KEY is only required in apikey auth mode; PI_MODEL_AUTH=managed-identity
+    // Required inside the runtime container, unless OF_MOCK=1.
+    // OF_OPENAI_API_KEY is only required in apikey auth mode; OF_MODEL_AUTH=managed-identity
     // mints AAD tokens via DefaultAzureCredential instead of a static key.
-    requiredWhenLive: ["PI_OPENAI_API_KEY", "PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"],
-    requiredWhenLiveKeyless: ["PI_OPENAI_BASE_URL", "PI_OPENAI_MODEL"],
+    requiredWhenLive: ["OF_OPENAI_API_KEY", "OF_OPENAI_BASE_URL", "OF_OPENAI_MODEL"],
+    requiredWhenLiveKeyless: ["OF_OPENAI_BASE_URL", "OF_OPENAI_MODEL"],
     // Optional runtime knobs with their defaults / accepted shapes.
     runtime: [
       { name: "HARNESS", default: "pi", accepts: ["pi", "copilot"], note: "Agent harness. copilot drives GitHub Copilot via @github/copilot-sdk and reaches the model through BYOK (apikey only)." },
-      { name: "PI_ARGS", default: "--mode rpc --no-session", note: "Append --provider foundry --model <model> when using PI_OPENAI_*." },
-      { name: "PI_MOCK", default: "0", accepts: ["0", "1", "true", "false"] },
-      { name: "PI_MODEL_AUTH", default: "apikey", accepts: ["apikey", "managed-identity"], note: "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no PI_OPENAI_API_KEY needed. Not supported with HARNESS=copilot." },
-      { name: "FOUNDRY_TOKEN_SCOPE", default: "https://cognitiveservices.azure.com/.default", note: "AAD scope used when PI_MODEL_AUTH=managed-identity." },
-      { name: "COPILOT_PROVIDER_TYPE", default: "(auto)", accepts: ["azure", "openai"], note: "HARNESS=copilot BYOK provider type. Auto-detected from PI_OPENAI_BASE_URL (azure when the host is *.azure.com)." },
+      { name: "PI_ARGS", default: "--mode rpc --no-session", note: "Append --provider foundry --model <model> when using OF_OPENAI_*." },
+      { name: "OF_MOCK", default: "0", accepts: ["0", "1", "true", "false"] },
+      { name: "OF_MODEL_AUTH", default: "apikey", accepts: ["apikey", "managed-identity"], note: "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no OF_OPENAI_API_KEY needed. Not supported with HARNESS=copilot." },
+      { name: "FOUNDRY_TOKEN_SCOPE", default: "https://cognitiveservices.azure.com/.default", note: "AAD scope used when OF_MODEL_AUTH=managed-identity." },
+      { name: "COPILOT_PROVIDER_TYPE", default: "(auto)", accepts: ["azure", "openai"], note: "HARNESS=copilot BYOK provider type. Auto-detected from OF_OPENAI_BASE_URL (azure when the host is *.azure.com)." },
       { name: "COPILOT_WIRE_API", default: "completions", accepts: ["responses", "completions"], note: "HARNESS=copilot BYOK wire API format." },
       { name: "COPILOT_API_VERSION", default: "2025-04-01-preview", note: "HARNESS=copilot Azure provider api-version." },
       { name: "REQUEST_TIMEOUT_MS", default: "300000" },
       { name: "SSE_HEARTBEAT_MS", default: "20000", note: "SSE keepalive interval; emits a `:` comment so Foundry's ~120s APIM idle timeout never fires during silent phases. 0 disables." },
       { name: "ENABLE_DIAGNOSTICS", default: "0", accepts: ["0", "1", "true", "false"] },
       { name: "WORKSPACE_DIR", default: "/workspace" },
-      { name: "STATE_DIR", default: "${HOME}/.pi-foundry" },
+      { name: "STATE_DIR", default: "${HOME}/.open-foundry" },
       { name: "SESSIONS_DIR", default: "${STATE_DIR}/sessions" },
       { name: "PI_CODING_AGENT_DIR", default: "${STATE_DIR}/pi-agent", note: "Never defaults to ~/.pi/agent; that would clobber a developer's interactive pi config." },
     ],
@@ -66,8 +66,8 @@ export function validateRuntimeEnv(env, { mock } = {}) {
   }
   // Copilot reaches the model through BYOK, which is API-key only; there is no
   // keyless path, so reject managed-identity instead of failing at first call.
-  if (harness === "copilot" && String(env.PI_MODEL_AUTH ?? "").trim().toLowerCase() === "managed-identity") {
-    issues.push({ severity: "error", name: "PI_MODEL_AUTH", message: "HARNESS=copilot does not support PI_MODEL_AUTH=managed-identity; Copilot BYOK requires an API key (set PI_OPENAI_API_KEY)." });
+  if (harness === "copilot" && String(env.OF_MODEL_AUTH ?? "").trim().toLowerCase() === "managed-identity") {
+    issues.push({ severity: "error", name: "OF_MODEL_AUTH", message: "HARNESS=copilot does not support OF_MODEL_AUTH=managed-identity; Copilot BYOK requires an API key (set OF_OPENAI_API_KEY)." });
   }
   // Validate Copilot knobs at startup so a typo fails fast here, not as an opaque
   // SDK error on the first invocation. Only enforced for the copilot harness.
@@ -82,13 +82,13 @@ export function validateRuntimeEnv(env, { mock } = {}) {
     }
   }
   if (!mock) {
-    const keyless = harness !== "copilot" && String(env.PI_MODEL_AUTH ?? "").trim().toLowerCase() === "managed-identity";
+    const keyless = harness !== "copilot" && String(env.OF_MODEL_AUTH ?? "").trim().toLowerCase() === "managed-identity";
     const required = keyless ? contract.env.requiredWhenLiveKeyless : contract.env.requiredWhenLive;
     for (const name of required) {
       if (!env[name] || String(env[name]).trim() === "") {
         const hint = keyless
-          ? "set it via azd env, or set PI_MOCK=1 for offline mode"
-          : "set it via azd env, set PI_MODEL_AUTH=managed-identity for keyless auth, or set PI_MOCK=1 for offline mode";
+          ? "set it via azd env, or set OF_MOCK=1 for offline mode"
+          : "set it via azd env, set OF_MODEL_AUTH=managed-identity for keyless auth, or set OF_MOCK=1 for offline mode";
         issues.push({ severity: "error", name, message: `${name} is required (${hint}).` });
       }
     }
@@ -98,8 +98,8 @@ export function validateRuntimeEnv(env, { mock } = {}) {
     if (contract.env.reservedAllowedExceptions.includes(name)) continue;
     if (name.startsWith("AGENT_")) continue; // populated by Foundry at runtime; informational, not user-set.
     if (name.startsWith("FOUNDRY_")) {
-      // Legacy aliases the runtime still reads; warn instead of erroring.
-      if (["FOUNDRY_OPENAI_API_KEY", "FOUNDRY_OPENAI_BASE_URL", "FOUNDRY_OPENAI_MODEL", "FOUNDRY_INVOCATIONS_ENDPOINT", "FOUNDRY_TENANT_ID", "FOUNDRY_TOKEN_SCOPE", "FOUNDRY_BEARER_TOKEN", "FOUNDRY_MODEL", "FOUNDRY_MODEL_LABEL", "FOUNDRY_PROVIDER_NAME", "FOUNDRY_AGENT_SESSION_ID", "FOUNDRY_TOKEN_COMMAND_CWD"].includes(name)) continue;
+      // Foundry-injected vars and documented aliases the runtime reads; warn instead of erroring.
+      if (["FOUNDRY_INVOCATIONS_ENDPOINT", "FOUNDRY_TENANT_ID", "FOUNDRY_TOKEN_SCOPE", "FOUNDRY_BEARER_TOKEN", "FOUNDRY_MODEL", "FOUNDRY_MODEL_LABEL", "FOUNDRY_PROVIDER_NAME", "FOUNDRY_AGENT_SESSION_ID", "FOUNDRY_TOKEN_COMMAND_CWD"].includes(name)) continue;
       issues.push({ severity: "warning", name, message: `${name} uses the reserved FOUNDRY_ prefix; Foundry may overwrite it. Rename unless it is an established alias.` });
     }
   }

@@ -1,12 +1,12 @@
-# pi-foundry runtime images
+# open-foundry runtime images
 
 The runtime images are the **versioned contract product** of this repo. The
 skill-managed deployment expects a published runtime image referenced from the
 user repo's thin Dockerfile:
 
 ```dockerfile
-ARG PI_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag>
-FROM ${PI_FOUNDRY_RUNTIME_IMAGE}
+ARG OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag>
+FROM ${OPEN_FOUNDRY_RUNTIME_IMAGE}
 
 WORKDIR /app
 COPY . /workspace
@@ -34,7 +34,7 @@ Both images include:
 - Node invocations host (`src/backend.mjs`) — the single Foundry-facing
   process; serves `GET /readiness` and `POST /invocations` directly on `PORT`
   (default `8088`). There is no separate Python host or internal proxy port.
-- `pi-foundry` CLI (`/usr/local/bin/pi-foundry`) wrapping `src/cli.mjs`
+- `open-foundry` CLI (`/usr/local/bin/open-foundry`) wrapping `src/cli.mjs`
 - `/app/src` (contract.mjs, cli.mjs, backend.mjs, adapters, runtime helpers)
 
 Harness-specific contents are intentionally separate:
@@ -55,13 +55,13 @@ Inside the image, two commands surface the runtime contract without booting
 the backend:
 
 ```bash
-pi-foundry contract    # full env / tier / reserved-prefix contract as JSON
-pi-foundry doctor      # validate current env; exit 1 on missing required vars (redacts secrets)
-pi-foundry version
+open-foundry contract    # full env / tier / reserved-prefix contract as JSON
+open-foundry doctor      # validate current env; exit 1 on missing required vars (redacts secrets)
+open-foundry version
 ```
 
 The contract is the same data structure consumed by `src/backend.mjs` for
-startup fail-fast validation and by `.agents/skills/pi-foundry/references/contract.json`
+startup fail-fast validation and by `.agents/skills/open-foundry/references/contract.json`
 for the skill. The skill's JSON is regenerated from `src/contract.mjs` via
 `npm run emit:contract`, so there is one source of truth.
 
@@ -70,7 +70,7 @@ for the skill. The skill's JSON is regenerated from `src/contract.mjs` via
 Build the Pi image:
 
 ```bash
-PI_FOUNDRY_RUNTIME_IMAGE=pi-foundry-runtime:local npm run runtime:build
+OPEN_FOUNDRY_RUNTIME_IMAGE=pi-foundry-runtime:local npm run runtime:build
 ```
 
 Build the GitHub Copilot image:
@@ -86,11 +86,11 @@ docker build --pull=false \
 ## Smoke locally (requires Docker)
 
 ```bash
-PI_FOUNDRY_RUNTIME_IMAGE=pi-foundry-runtime:local npm run runtime:smoke
-PI_FOUNDRY_RUNTIME_IMAGE=ghcp-foundry-runtime:local npm run runtime:smoke
+OPEN_FOUNDRY_RUNTIME_IMAGE=pi-foundry-runtime:local npm run runtime:smoke
+OPEN_FOUNDRY_RUNTIME_IMAGE=ghcp-foundry-runtime:local npm run runtime:smoke
 ```
 
-The smoke test runs the container with `PI_MOCK=1`, mounts a throwaway
+The smoke test runs the container with `OF_MOCK=1`, mounts a throwaway
 tempdir as `/workspace` (override with `WORKSPACE=<path>` to point at a real
 agent workspace), polls `/readiness`, and posts a mock invocation.
 
@@ -135,7 +135,7 @@ docker push <acr>.azurecr.io/ghcp-foundry-runtime:<tag>
 Or, for a non-ACR registry:
 
 ```bash
-PI_FOUNDRY_RUNTIME_IMAGE=ghcr.io/<org>/pi-foundry-runtime:<tag> npm run runtime:build
+OPEN_FOUNDRY_RUNTIME_IMAGE=ghcr.io/<org>/pi-foundry-runtime:<tag> npm run runtime:build
 docker push ghcr.io/<org>/pi-foundry-runtime:<tag>
 
 docker build --pull=false --build-arg HARNESS=copilot -f Dockerfile.runtime -t ghcr.io/<org>/ghcp-foundry-runtime:<tag> .

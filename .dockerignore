@@ -6,5 +6,5 @@ npm-debug.log
 .env.*
 .azure
 .files
-.pi-foundry
+.open-foundry
 skills-lock.json

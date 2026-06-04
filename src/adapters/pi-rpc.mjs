@@ -233,7 +233,7 @@ export function createPiRpcAdapter({
     if (mock) return;
     const managedIdentity = modelAuth === "managed-identity";
     // apikey mode needs a key; managed-identity mode mints AAD tokens instead.
-    if (!managedIdentity && !process.env.PI_OPENAI_API_KEY && !process.env.FOUNDRY_OPENAI_API_KEY) return;
+    if (!managedIdentity && !process.env.OF_OPENAI_API_KEY) return;
     if (!foundryOpenAIBaseUrl || !foundryOpenAIModel) return;
     const home = process.env.HOME ?? "";
     if (home && piAgentDir === resolve(home, ".pi/agent")) {
@@ -250,7 +250,7 @@ export function createPiRpcAdapter({
       const tokenScript = fileURLToPath(new URL("../foundry-token.mjs", import.meta.url));
       apiKey = `!${process.execPath} ${tokenScript}`;
     } else {
-      apiKey = process.env.PI_OPENAI_API_KEY ? "PI_OPENAI_API_KEY" : "FOUNDRY_OPENAI_API_KEY";
+      apiKey = "OF_OPENAI_API_KEY";
     }
 
     const modelsPath = resolve(piAgentDir, "models.json");

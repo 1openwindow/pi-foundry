@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseDotenv, isSecretName, redact, parseArgs, inferHarnessFromRuntimeImage, runtimeImageFromDockerfileText, resolveModelAuth } from "../.agents/skills/pi-foundry/scripts/_lib.mjs";
+import { parseDotenv, isSecretName, redact, parseArgs, inferHarnessFromRuntimeImage, runtimeImageFromDockerfileText, resolveModelAuth } from "../.agents/skills/open-foundry/scripts/_lib.mjs";
 
 describe("parseDotenv", () => {
   it("parses bare KEY=value lines", () => {
@@ -39,13 +39,13 @@ describe("parseDotenv", () => {
 
 describe("isSecretName", () => {
   it("identifies common secret-shaped names case-insensitively", () => {
-    for (const name of ["PI_OPENAI_API_KEY", "GITHUB_TOKEN", "DB_PASSWORD", "MY_SECRET", "AZURE_CREDENTIAL"]) {
+    for (const name of ["OF_OPENAI_API_KEY", "GITHUB_TOKEN", "DB_PASSWORD", "MY_SECRET", "AZURE_CREDENTIAL"]) {
       assert.equal(isSecretName(name), true, name);
     }
   });
 
   it("does not flag plain config names", () => {
-    for (const name of ["PI_OPENAI_MODEL", "AZURE_LOCATION", "AZURE_CONTAINER_REGISTRY_ENDPOINT", "PI_ARGS"]) {
+    for (const name of ["OF_OPENAI_MODEL", "AZURE_LOCATION", "AZURE_CONTAINER_REGISTRY_ENDPOINT", "PI_ARGS"]) {
       assert.equal(isSecretName(name), false, name);
     }
   });
@@ -122,8 +122,8 @@ describe("inferHarnessFromRuntimeImage", () => {
 });
 
 describe("runtimeImageFromDockerfileText", () => {
-  it("resolves FROM ${PI_FOUNDRY_RUNTIME_IMAGE} via the ARG default", () => {
-    const text = "ARG PI_FOUNDRY_RUNTIME_IMAGE=myacr.azurecr.io/ghcp-foundry-runtime:1.0\nFROM ${PI_FOUNDRY_RUNTIME_IMAGE}\nCOPY . /workspace\n";
+  it("resolves FROM ${OPEN_FOUNDRY_RUNTIME_IMAGE} via the ARG default", () => {
+    const text = "ARG OPEN_FOUNDRY_RUNTIME_IMAGE=myacr.azurecr.io/ghcp-foundry-runtime:1.0\nFROM ${OPEN_FOUNDRY_RUNTIME_IMAGE}\nCOPY . /workspace\n";
     assert.equal(runtimeImageFromDockerfileText(text), "myacr.azurecr.io/ghcp-foundry-runtime:1.0");
   });
 

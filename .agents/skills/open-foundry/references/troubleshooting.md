@@ -1,4 +1,4 @@
-# pi-foundry skill troubleshooting
+# open-foundry skill troubleshooting
 
 The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the error symptom in the left column, give the user the one-line cause and the one command in the right column.
 
@@ -6,7 +6,7 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 
 | Symptom | Cause + action |
 |---|---|
-| `bootstrap.mjs` refuses to write because `azure.yaml` exists | User repo already has a non-pi-foundry `azure.yaml`. Ask before replacing; rerun `bootstrap.mjs --force` only after explicit confirmation, and back up the old file first. |
+| `bootstrap.mjs` refuses to write because `azure.yaml` exists | User repo already has a non-open-foundry `azure.yaml`. Ask before replacing; rerun `bootstrap.mjs --force` only after explicit confirmation, and back up the old file first. |
 | `Dockerfile` contains `<runtime-image>` literal at deploy time | bootstrap was run without `--runtime-image`. Rerun: `bootstrap.mjs --runtime-image <acr>/pi-foundry-runtime:<tag>` |
 | `agent.yaml` / `agent.manifest.yaml` contains `<agent-name>` literal | Same root cause: bootstrap not run, or run with wrong arg. Rerun with `--agent-name <name>`. |
 
@@ -21,8 +21,8 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 | `azd ai agent invoke` returns 403 `preview_feature_required` | The CLI does not send `Foundry-Features: HostedAgents=V1Preview`. Use `verify.mjs`, which calls the invocations REST endpoint with that header. |
 | Deploy fails with "image pull unauthorized" | Foundry identities lack ACR pull. Run `azd ai agent doctor --no-prompt` and assign AcrPull on the registry. |
 | Invoke returns "configuration: no foundry provider" or model 401 | `PI_OPENAI_*` not set in azd env, or `PI_ARGS` missing `--provider foundry --model <model>`. Reconfigure via `configure-env.mjs`. |
-| Keyless (`PI_MODEL_AUTH=managed-identity`) invoke returns model 401/403 | The agent's **Instance Identity** lacks a data-plane role on the model account. Run `node <skill>/scripts/grant-model-access.mjs` (grants `Cognitive Services OpenAI User`), then `azd deploy`. |
-| Container fails readiness | `PI_MOCK` not set and `PI_OPENAI_API_KEY` missing → runtime rejects start. Set `PI_MOCK=1` for smoke, set the API key, or use `PI_MODEL_AUTH=managed-identity` for keyless auth. |
+| Keyless (`OF_MODEL_AUTH=managed-identity`) invoke returns model 401/403 | The agent's **Instance Identity** lacks a data-plane role on the model account. Run `node <skill>/scripts/grant-model-access.mjs` (grants `Cognitive Services OpenAI User`), then `azd deploy`. |
+| Container fails readiness | `OF_MOCK` not set and `OF_OPENAI_API_KEY` missing → runtime rejects start. Set `OF_MOCK=1` for smoke, set the API key, or use `OF_MODEL_AUTH=managed-identity` for keyless auth. |
 | azd env contains custom `AGENT_*` or `FOUNDRY_*` variables (other than `FOUNDRY_PROJECT_ENDPOINT`) | Foundry reserves these prefixes. Remove them with `azd env set <NAME>=` to clear, or rename. |
 
 ## Deploy
@@ -38,7 +38,7 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 
 | Symptom | Cause + action |
 |---|---|
-| Response includes `"mock": true` when user expected real model | `PI_MOCK=1` is still set. `azd env set PI_MOCK=0` and `azd deploy` to roll a new revision. |
+| Response includes `"mock": true` when user expected real model | `OF_MOCK=1` is still set. `azd env set OF_MOCK=0` and `azd deploy` to roll a new revision. |
 | Session continuity not working | Pass the same `agent_session_id`. `verify.mjs --session <id>` reuses sessions. |
 | HTTP 408 `{"error":{"code":"Timeout"}}` (header `Apim-Request-Id`) on tasks longer than ~120s | Foundry's APIM gateway enforces a ~120s **idle** (no-bytes) timeout; a non-streaming request holds the connection silent for the whole task, so anything past ~120s is cut at the gateway before the container's `REQUEST_TIMEOUT_MS` ever applies. Use the SSE path (`verify.mjs` streams by default; send `Accept: text/event-stream`): the runtime emits an SSE keepalive every `SSE_HEARTBEAT_MS` (default 20s) so silent phases (tool runs, uploads) keep the idle timer alive. `azd ai agent invoke` cannot consume SSE — it stays limited to short (<~120s) tasks. |
 

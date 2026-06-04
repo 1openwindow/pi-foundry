@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// pi-foundry CLI shipped inside the runtime image.
+// open-foundry CLI shipped inside the runtime image.
 // Lets users introspect the contract without running the full backend.
 //
-//   pi-foundry contract              prints contract.json (single source of truth)
-//   pi-foundry doctor                checks env vars and prints redacted summary
-//   pi-foundry version               prints the runtime image's pi-foundry version
+//   open-foundry contract              prints contract.json (single source of truth)
+//   open-foundry doctor                checks env vars and prints redacted summary
+//   open-foundry version               prints the runtime image's open-foundry version
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -20,15 +20,15 @@ switch (cmd) {
     break;
 
   case "doctor": {
-    const mock = isTruthy(process.env.PI_MOCK);
+    const mock = isTruthy(process.env.OF_MOCK);
     const issues = validateRuntimeEnv(process.env, { mock });
     const inspected = [
-      "PI_MOCK",
+      "OF_MOCK",
       "PI_ARGS",
-      "PI_MODEL_AUTH",
-      "PI_OPENAI_BASE_URL",
-      "PI_OPENAI_MODEL",
-      "PI_OPENAI_API_KEY",
+      "OF_MODEL_AUTH",
+      "OF_OPENAI_BASE_URL",
+      "OF_OPENAI_MODEL",
+      "OF_OPENAI_API_KEY",
       "WORKSPACE_DIR",
       "STATE_DIR",
       "PI_CODING_AGENT_DIR",
@@ -47,7 +47,7 @@ switch (cmd) {
       const pkg = JSON.parse(readFileSync(resolve(here, "../package.json"), "utf8"));
       process.stdout.write(`${pkg.name}@${pkg.version}\n`);
     } catch {
-      process.stdout.write("pi-foundry@unknown\n");
+      process.stdout.write("open-foundry@unknown\n");
     }
     break;
   }
@@ -55,13 +55,13 @@ switch (cmd) {
   case undefined:
   case "--help":
   case "-h":
-    process.stdout.write("Usage: pi-foundry <contract|doctor|version>\n");
+    process.stdout.write("Usage: open-foundry <contract|doctor|version>\n");
     process.exit(cmd === undefined ? 2 : 0);
     break;
 
   default:
     process.stderr.write(`Unknown command: ${cmd}\n`);
-    process.stderr.write("Usage: pi-foundry <contract|doctor|version>\n");
+    process.stderr.write("Usage: open-foundry <contract|doctor|version>\n");
     process.exit(2);
 }
 
