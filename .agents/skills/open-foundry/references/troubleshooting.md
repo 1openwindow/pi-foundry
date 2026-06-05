@@ -18,7 +18,6 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 | `azd up` fails: `Could not find ... infra/main.bicep` | This thin layout has no `infra/` to provision. Use `azd deploy`, not `azd up`. |
 | Deploy fails: `AZURE_AI_PROJECT_ID is not set` | `azd deploy` needs the project's full ARM resource id. `configure-env.mjs` derives it; if it couldn't, pass `--azure-ai-project-id /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>`. |
 | postdeploy fails: `AZURE_TENANT_ID is not set` | The agent deployed but a postdeploy hook needs the tenant. Set it (`configure-env.mjs` derives it) then rerun `azd deploy`: `azd env set AZURE_TENANT_ID=<tenant-id>`. |
-| `azd ai agent invoke` returns 403 `preview_feature_required` | The CLI does not send `Foundry-Features: HostedAgents=V1Preview`. Use `verify.mjs`, which calls the invocations REST endpoint with that header. |
 | Deploy fails with "image pull unauthorized" | Foundry identities lack ACR pull. Run `azd ai agent doctor --no-prompt` and assign AcrPull on the registry. |
 | Invoke returns "configuration: no foundry provider" or model 401 | `PI_OPENAI_*` not set in azd env, or `PI_ARGS` missing `--provider foundry --model <model>`. Reconfigure via `configure-env.mjs`. |
 | Keyless (`OF_MODEL_AUTH=managed-identity`) invoke returns model 401/403 | The agent's **Instance Identity** lacks a data-plane role on the model account. Run `node <skill>/scripts/grant-model-access.mjs` (grants `Cognitive Services OpenAI User`), then `azd deploy`. |
@@ -40,7 +39,7 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 |---|---|
 | Response includes `"mock": true` when user expected real model | `OF_MOCK=1` is still set. `azd env set OF_MOCK=0` and `azd deploy` to roll a new revision. |
 | Session continuity not working | Pass the same `agent_session_id`. `verify.mjs --session <id>` reuses sessions. |
-| HTTP 408 `{"error":{"code":"Timeout"}}` (header `Apim-Request-Id`) on tasks longer than ~120s | Foundry's APIM gateway enforces a ~120s **idle** (no-bytes) timeout; a non-streaming request holds the connection silent for the whole task, so anything past ~120s is cut at the gateway before the container's `REQUEST_TIMEOUT_MS` ever applies. Use the SSE path (`verify.mjs` streams by default; send `Accept: text/event-stream`): the runtime emits an SSE keepalive every `SSE_HEARTBEAT_MS` (default 20s) so silent phases (tool runs, uploads) keep the idle timer alive. `azd ai agent invoke` cannot consume SSE — it stays limited to short (<~120s) tasks. |
+| HTTP 408 `{"error":{"code":"Timeout"}}` (header `Apim-Request-Id`) on tasks longer than ~120s | Foundry's APIM gateway enforces a ~120s **idle** (no-bytes) timeout; a non-streaming request holds the connection silent for the whole task, so anything past ~120s is cut at the gateway before the container's `REQUEST_TIMEOUT_MS` ever applies. Use the SSE path (`verify.mjs` streams by default; send `Accept: text/event-stream`): the runtime emits an SSE keepalive every `SSE_HEARTBEAT_MS` (default 20s) so silent phases (tool runs, uploads) keep the idle timer alive. `azd ai agent invoke` does not consume SSE, so it suits short (<~120s) tasks; use `verify.mjs` for longer ones. |
 
 ## Runtime image
 

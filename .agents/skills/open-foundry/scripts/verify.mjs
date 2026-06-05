@@ -1,22 +1,20 @@
 #!/usr/bin/env node
-// verify.mjs — smoke test a deployed Hosted Agent over the invocations protocol.
+// verify.mjs — smoke test a deployed Hosted Agent over the invocations protocol,
+// streaming via SSE so long tasks (>~120s) survive the gateway idle timeout.
 //
-// Why not `azd ai agent invoke`? As of the azure.ai.agents preview, Hosted Agent
-// session creation requires the opt-in header `Foundry-Features: HostedAgents=V1Preview`,
-// which the CLI does not send (you get HTTP 403 preview_feature_required). So this script
-// talks to the REST endpoint directly: it mints a data-plane token with `azd auth token`,
-// creates a session, then POSTs the invocation — sending the preview header on both calls.
+// For short tasks, `azd ai agent invoke <agent> '{"input":"..."}'` is enough.
+// This script exists for the long-task path: Foundry's APIM gateway drops a
+// response after ~120s with no body bytes (HTTP 408 "operation was timeout").
+// `azd ai agent invoke` does not consume SSE, so it can't outlast that idle
+// timer. This script talks to the REST endpoint directly — mints a data-plane
+// token with `azd auth token`, creates a session, then POSTs the invocation
+// over SSE — and the runtime emits keepalive bytes so the idle timer never
+// fires. Token deltas stream to stderr for progress; the final `done.full_text`
+// is printed to stdout.
 //
 // Usage:
 //   verify.mjs [--agent <name>] [--message <text>] [--session <id>]
 //              [--scope <aad-scope>] [--preview <feature-flag>] [--timeout <seconds>]
-//
-// Always uses the SSE path. Foundry's APIM gateway drops a response after ~120s with
-// no body bytes (HTTP 408 "operation was timeout"); the runtime emits keepalive bytes
-// on the stream so the gateway idle timer never fires, which lets long tasks (>~120s)
-// complete. Token deltas stream to stderr for progress; the final `done.full_text` is
-// printed to stdout. (`azd ai agent invoke` can't consume SSE, so it stays limited to
-// short tasks — this script is the long-task path.)
 //
 // Prints the session id (stderr) so you can chain a second call for continuity:
 //   SID=$(verify.mjs --message 'Remember the word mango. Reply: stored' 2>&1 >/dev/null | sed -n 's/^session: //p')

@@ -23,7 +23,7 @@ Confirm these before bootstrapping; if missing, tell the user exactly what to in
 - **A runtime image** the Foundry project can pull, named `<harness>-foundry-runtime`. For a quick trial use the published image for your harness — the contract `harnesses` table holds each one's `trialImage` (currently `ghcr.io/1openwindow/pi-foundry-runtime:0.1` for pi, `ghcr.io/1openwindow/ghcp-foundry-runtime:0.1` for GitHub Copilot); for production pin an exact version or publish your own (see [docs/runtime-image.md](https://github.com/1openwindow/open-foundry/blob/main/docs/runtime-image.md)).
 - **A container registry** (`<acr>.azurecr.io`) for `azd deploy`'s remote build, with `AcrPull` granted to the Foundry agent identities.
 - **A model**: OpenAI-compatible endpoint + model name, plus either an API key or — for keyless `managed-identity` — the Azure rights to create a role assignment (`Owner` or `User Access Administrator` on the model account), since `grant-model-access.mjs` writes one.
-- **Foundry `HostedAgents` preview** enabled for the tenant/subscription; invocations send `Foundry-Features: HostedAgents=V1Preview` and otherwise return `403 preview_feature_required`.
+- **Foundry `HostedAgents` preview** enabled for the tenant/subscription; without it, session creation returns `403 preview_feature_required`.
 
 ## Mental model
 
@@ -62,7 +62,7 @@ scripts/
   bootstrap.mjs                         cp templates/* into cwd, substitute placeholders
   configure-env.mjs                     wrap azd env set; never print secrets; reads contract
   grant-model-access.mjs                keyless: grant agent identity the model role (managed-identity only)
-  verify.mjs                            invoke over the invocations REST endpoint (sends the Foundry preview header)
+  verify.mjs                            stream an invocation over SSE (long-task verify; short tasks: azd ai agent invoke)
   _lib.mjs                              shared helpers (internal)
 references/
   contract.json                         single source of truth for env / tiers / reserved prefixes
@@ -113,7 +113,7 @@ Ask the user only for what you can't infer:
      --acr <acr>.azurecr.io --foundry-project-endpoint <url> --azure-subscription-id <sub> --azure-location <region>
 5. Have the user set the key: azd env set OF_OPENAI_API_KEY=<key>
 6. azd deploy
-7. node <skill>/scripts/verify.mjs
+7. azd ai agent invoke <name> '{"input": "<prompt>"}'   (long tasks: node <skill>/scripts/verify.mjs)
 ```
 
 Where `<skill>` is the absolute path to this skill directory, e.g. `~/repos/open-foundry/.agents/skills/open-foundry`.
@@ -181,7 +181,7 @@ startup as a backstop. The verified `COPILOT_*` defaults need no flags; override
 
 ### Verify
 
-`verify.mjs` smoke-tests the deployed agent over the **invocations REST endpoint**. It does not use `azd ai agent invoke`, because Hosted Agent session creation currently requires the opt-in header `Foundry-Features: HostedAgents=V1Preview` that the CLI does not send (otherwise HTTP 403 `preview_feature_required`). The script mints a data-plane token with `azd auth token`, creates a session, and POSTs the invocation with that header. It auto-discovers the endpoint and agent name from `azd env` + `agent.yaml`. Pass `--session <id>` to reuse a session for continuity tests; omit it to start a new session.
+For a short smoke test, use `azd ai agent invoke <name> '{"input": "<prompt>"}'`. For long tasks (>~120s), use `verify.mjs`: it streams the invocation over SSE so the runtime's keepalive bytes outlast Foundry's ~120s gateway idle timeout, which a non-streaming `azd ai agent invoke` cannot. It mints a data-plane token with `azd auth token` and auto-discovers the endpoint and agent name from `azd env` + `agent.yaml`. Pass `--session <id>` to reuse a session for continuity tests; omit it to start a new session.
 
 ## Troubleshooting
 
