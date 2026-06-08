@@ -1,7 +1,7 @@
 # open-foundry runtime images
 
 > **Most users never build this.** The deploy skill points your repo at a
-> published runtime image — pick one from the table below and you're done. The
+> ready-to-use runtime image — pick one from the table below and you're done. The
 > rest of this page is for publishing or customizing your **own** runtime image.
 
 ## Pick an image
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY . /workspace
 ```
 
-Use the public GHCR image for trials, or publish your own (below) to a registry
+Use the public GHCR image as-is, or build your own (below) to a registry
 your Foundry project can pull from. Your agent assets (`.agents/skills`, prompts,
 MCP config, workspace) are **not** in the image — they come from your repo and
 land in `/workspace`.

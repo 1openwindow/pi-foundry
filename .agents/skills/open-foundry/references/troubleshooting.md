@@ -18,7 +18,8 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 | `azd up` fails: `Could not find ... infra/main.bicep` | This thin layout has no `infra/` to provision. Use `azd deploy`, not `azd up`. |
 | Deploy fails: `AZURE_AI_PROJECT_ID is not set` | `azd deploy` needs the project's full ARM resource id. `configure-env.mjs` derives it; if it couldn't, pass `--azure-ai-project-id /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>`. |
 | postdeploy fails: `AZURE_TENANT_ID is not set` | The agent deployed but a postdeploy hook needs the tenant. Set it (`configure-env.mjs` derives it) then rerun `azd deploy`: `azd env set AZURE_TENANT_ID=<tenant-id>`. |
-| Deploy fails with "image pull unauthorized" | Foundry identities lack ACR pull. Run `azd ai agent doctor --no-prompt` and assign AcrPull on the registry. |
+| Deploy fails with "image pull unauthorized" / `image_pull_failed` / `UnauthorizedAcrPull` | The Foundry project's managed identity lacks pull on the ACR. Grant it `Container Registry Repository Reader` (classic: `AcrPull`). |
+| `AZURE_CONTAINER_REGISTRY_ENDPOINT` is empty | No ACR set for the remote build. The skill doesn't create one — provide an ACR endpoint, then `configure-env.mjs --acr <acr>.azurecr.io`. |
 | Invoke returns "configuration: no foundry provider" or model 401 | `PI_OPENAI_*` not set in azd env, or `PI_ARGS` missing `--provider foundry --model <model>`. Reconfigure via `configure-env.mjs`. |
 | Keyless (`OF_MODEL_AUTH=managed-identity`) invoke returns model 401/403 | The agent's **Instance Identity** lacks a data-plane role on the model account. Run `node <skill>/scripts/grant-model-access.mjs` (grants `Cognitive Services OpenAI User`), then `azd deploy`. |
 | Container fails readiness | `OF_MOCK` not set and `OF_OPENAI_API_KEY` missing → runtime rejects start. Set `OF_MOCK=1` for smoke, set the API key, or use `OF_MODEL_AUTH=managed-identity` for keyless auth. |
@@ -45,6 +46,6 @@ The LLM consults this file when `azd deploy` or `verify.mjs` fails. Match the er
 
 | Symptom | Cause + action |
 |---|---|
-| `FROM <runtime-image>` fails at build time | Either bootstrap wasn't given `--runtime-image`, or the user's identity can't pull from that ACR. `az acr login -n <acr>` and rerun. |
+| `FROM <runtime-image>` fails at build time | Either bootstrap wasn't given `--runtime-image`, or the deploying user can't pull from that ACR. Grant the deployer `Container Registry Repository Writer`/`AcrPush` on the registry, then rerun. |
 | Skills don't load inside container | Pi reads from `/workspace/.agents/skills/`. Ensure the user's repo has skills there and Dockerfile does `COPY . /workspace` (it does by default). |
 | Workspace empty inside container | `.dockerignore` excluded too much. Compare against `templates/.dockerignore`. |

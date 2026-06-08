@@ -33,8 +33,9 @@ ids and grant the keyless model role through ARM REST using `azd auth token`, so
 You also need:
 
 - a Foundry project (subscription, location, project endpoint),
-- an Azure Container Registry your Foundry project can pull from,
-- a published runtime image in that registry (see
+- an Azure Container Registry your Foundry project can pull from (see
+  [Container registry](#container-registry) to set one up),
+- a runtime image you can pull as the build base (see
   [docs/runtime-image.md](./docs/runtime-image.md)): `pi-foundry-runtime` for Pi
   or `ghcp-foundry-runtime` for GitHub Copilot,
 - a Foundry OpenAI-compatible endpoint, model name, and an API key
@@ -45,6 +46,27 @@ You also need:
 
 The runtime image name is the harness selector. Do not set a separate `HARNESS`
 azd env value for normal deployments.
+
+## Container registry
+
+`azd deploy` builds your agent image server-side (ACR Tasks) and the Foundry
+project pulls it from an Azure Container Registry in **your** subscription.
+Creating the registry and assigning its RBAC are generic Azure operations —
+open-foundry doesn't own that path. Set one up yourself (or have your coding
+agent do it), then pass its endpoint via `configure-env.mjs --acr` (or
+`azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT <acr>.azurecr.io`).
+
+Two Foundry hosted-agent constraints are easy to miss:
+
+- **Public endpoint.** Hosted agents can't pull from a private-network-only ACR.
+- **Project identity can pull.** The Foundry **project's managed identity** needs
+  the `Container Registry Repository Reader` role (classic: `AcrPull`) on the
+  registry. `azd` configures this on some paths; with a bring-your-own ACR,
+  confirm it. The identity only exists after the first deploy, so if you can't
+  grant it yet, deploy once, grant it, then redeploy. No project `ContainerRegistry`
+  connection is needed — pull is pure RBAC.
+
+See [Configure container registry permissions](https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/deploy-hosted-agent#configure-container-registry-permissions).
 
 ## Configure the azd environment
 
@@ -216,9 +238,10 @@ configuration.
 
 ### ACR image pull failures
 
-The Foundry agent identities must have AcrPull on the registry holding your
-runtime image. Use `azd ai agent show <agent-name> --output json` to read
-identity principal IDs, then grant `AcrPull` on the registry resource.
+`image_pull_failed` / `UnauthorizedAcrPull` means the Foundry project's managed
+identity lacks pull on the registry. Read the project identity principal id with
+`azd ai agent show <agent-name> --output json`, then grant it `AcrPull` on the
+registry resource (see [Container registry](#container-registry)).
 
 ## Security notes
 

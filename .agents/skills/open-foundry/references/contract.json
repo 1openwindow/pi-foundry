@@ -11,12 +11,12 @@
     {
       "harness": "pi",
       "imagePrefix": "pi-foundry-runtime",
-      "trialImage": "ghcr.io/1openwindow/pi-foundry-runtime:0.1"
+      "runtimeImage": "ghcr.io/1openwindow/pi-foundry-runtime:0.1"
     },
     {
       "harness": "copilot",
       "imagePrefix": "ghcp-foundry-runtime",
-      "trialImage": "ghcr.io/1openwindow/ghcp-foundry-runtime:0.1"
+      "runtimeImage": "ghcr.io/1openwindow/ghcp-foundry-runtime:0.1"
     }
   ],
   "resourceTiers": [
