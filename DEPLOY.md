@@ -26,8 +26,8 @@ You also need:
 
 - a Foundry project (subscription, location, project endpoint),
 - an Azure Container Registry your Foundry project can pull from (see [Container registry](#container-registry) to set one up),
-- a runtime image you can pull as the build base (see [docs/runtime-image.md](./docs/runtime-image.md)): `pi-foundry-runtime` for Pi or `ghcp-foundry-runtime` for GitHub Copilot,
-- a Foundry OpenAI-compatible endpoint, model name, and an API key (`OF_MODEL_AUTH=apikey`, default). The Pi runtime also supports a managed-identity data-plane role assignment on the model resource (`OF_MODEL_AUTH=managed-identity`, keyless); the GitHub Copilot runtime does not.
+- a runtime image you can pull as the build base (see [docs/runtime-image.md](./docs/runtime-image.md)): `pi-foundry-runtime` (Pi), `ghcp-foundry-runtime` (GitHub Copilot), or `codex-foundry-runtime` (OpenAI Codex),
+- a Foundry OpenAI-compatible endpoint, model name, and an API key (`OF_MODEL_AUTH=apikey`, default). The Pi runtime also supports a managed-identity data-plane role assignment on the model resource (`OF_MODEL_AUTH=managed-identity`, keyless); the GitHub Copilot and OpenAI Codex runtimes do not.
 
 The runtime image name is the harness selector. Do not set a separate `HARNESS` azd env value for normal deployments.
 
@@ -60,18 +60,17 @@ azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT '<acr>.azurecr.io'
 
 # Live model config. Inside the runtime, OF_OPENAI_* is required unless OF_MOCK=1.
 azd env set OF_MOCK 0
-azd env set 'PI_ARGS=--mode rpc --no-session --provider foundry --model <model>'
 azd env set OF_OPENAI_BASE_URL '<https://<account>.cognitiveservices.azure.com/openai/v1>'
 azd env set OF_OPENAI_MODEL    '<model>'
 # Pass the secret as KEY=value to avoid azd reparsing leading -- characters:
 azd env set "OF_OPENAI_API_KEY=$OF_OPENAI_API_KEY"
 
 # Pi runtime only: keyless alternative (no OF_OPENAI_API_KEY), minting AAD tokens
-# via the Hosted Agent's managed identity. Copilot BYOK is API-key only; do not
-# use OF_MODEL_AUTH=managed-identity with ghcp-foundry-runtime. Keyless Pi requires
-# the agent identity to have a Cognitive Services / Azure OpenAI data-plane role
-# on the model resource. After the first `azd deploy` (the identity only exists
-# once deployed), grant it with:
+# via the Hosted Agent's managed identity. Copilot and Codex are BYOK API-key
+# only; do not use OF_MODEL_AUTH=managed-identity with ghcp-foundry-runtime or
+# codex-foundry-runtime. Keyless Pi requires the agent identity to have a
+# Cognitive Services / Azure OpenAI data-plane role on the model resource. After
+# the first `azd deploy` (the identity only exists once deployed), grant it with:
 #   node <skill>/scripts/grant-model-access.mjs   # Cognitive Services OpenAI User, idempotent
 # then redeploy. Manual equivalent:
 # azd env set OF_MODEL_AUTH managed-identity
@@ -96,6 +95,7 @@ If you have Docker locally, you can additionally run the runtime image smoke:
 ```bash
 OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/pi-foundry-runtime:<tag> npm run runtime:smoke
 OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/ghcp-foundry-runtime:<tag> npm run runtime:smoke
+OPEN_FOUNDRY_RUNTIME_IMAGE=<acr>.azurecr.io/codex-foundry-runtime:<tag> npm run runtime:smoke
 ```
 
 Inside the runtime container (or attached to a running one), validate the contract by hand:
@@ -183,7 +183,7 @@ The runtime refuses to start without the live triple. Either set `OF_OPENAI_API_
 
 ### `No API key found for the selected model`
 
-`PI_ARGS` points at a provider/model that pi cannot resolve. Make sure `OF_OPENAI_MODEL` matches the model in `PI_ARGS` and the key is set.
+The harness cannot resolve the configured provider/model. Make sure `OF_OPENAI_MODEL` and `OF_OPENAI_BASE_URL` are set correctly and the key is set (or `OF_MODEL_AUTH=managed-identity` is configured).
 
 ### `Environment variable 'FOUNDRY_*' is reserved` / `'AGENT_*' is reserved`
 

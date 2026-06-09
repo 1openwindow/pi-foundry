@@ -24,7 +24,6 @@ switch (cmd) {
     const issues = validateRuntimeEnv(process.env, { mock });
     const inspected = [
       "OF_MOCK",
-      "PI_ARGS",
       "OF_MODEL_AUTH",
       "OF_OPENAI_BASE_URL",
       "OF_OPENAI_MODEL",

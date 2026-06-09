@@ -9,17 +9,13 @@ displayName: My Pi Agent on Foundry
 description: Bring your own Pi skills, MCP servers, tools, prompts, and configuration to Microsoft Foundry.
 
 runtime:
-  type: pi-rpc
-  command: pi
-  # The wrapper removes --no-session per invocation and adds:
-  # --continue --session-dir <session-specific-dir>
-  args:
-    - --mode
-    - rpc
-    - --no-session
+  type: pi-sdk
+  # The pi adapter drives pi-coding-agent in-process via its SDK
+  # (createAgentSession). Foundry's per-invocation sessionId maps onto a pi
+  # session dir, continued across turns with SessionManager.continueRecent.
   provider: foundry
   # Replace with your Foundry model/deployment name, and keep it aligned with
-  # OF_OPENAI_MODEL and the --model value in PI_ARGS.
+  # OF_OPENAI_MODEL.
   model: <foundry-model-or-deployment>
 
 foundry:
@@ -50,7 +46,6 @@ mcp:
 
 environment:
   required:
-    - PI_ARGS
     - REQUEST_TIMEOUT_MS
   requiredForRealModel:
     - OF_OPENAI_API_KEY

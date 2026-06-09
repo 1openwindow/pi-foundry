@@ -14,8 +14,6 @@ resources:
   cpu: "2"
   memory: 4Gi
 environment_variables:
-  - name: PI_ARGS
-    value: ${PI_ARGS}
   - name: OF_MOCK
     value: ${OF_MOCK}
   - name: OF_MODEL_AUTH

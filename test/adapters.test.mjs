@@ -10,8 +10,6 @@ class HttpError extends Error {
 }
 
 const baseCtx = {
-  piBin: "pi",
-  piArgs: [],
   piAgentDir: "/tmp/open-foundry-test/pi-agent",
   requestTimeoutMs: 1000,
   mock: true,

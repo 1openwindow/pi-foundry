@@ -36,8 +36,6 @@ const requestTimeoutMs = Number.parseInt(process.env.REQUEST_TIMEOUT_MS ?? "3000
 const sseHeartbeatMs = Number.parseInt(process.env.SSE_HEARTBEAT_MS ?? "20000", 10);
 // Blank (e.g. an azd env var that expands to "") is treated as the default pi.
 const harness = (process.env.HARNESS ?? "").trim().toLowerCase() || "pi";
-const piBin = process.env.PI_BIN ?? "pi";
-const piArgs = parseArgs(process.env.PI_ARGS ?? "--mode rpc --no-session");
 const mock = process.env.OF_MOCK === "1" || process.env.OF_MOCK === "true";
 const diagnosticsEnabled = process.env.ENABLE_DIAGNOSTICS === "1" || process.env.ENABLE_DIAGNOSTICS === "true";
 const workspaceDir = resolve(process.env.WORKSPACE_DIR ?? process.cwd());
@@ -49,7 +47,7 @@ const piAgentDir = resolve(process.env.PI_CODING_AGENT_DIR ?? `${stateDir}/pi-ag
 const foundryOpenAIBaseUrl = process.env.OF_OPENAI_BASE_URL;
 const foundryOpenAIModel = process.env.OF_OPENAI_MODEL;
 // Model auth mode: "apikey" (default, BYOK) or "managed-identity" (keyless, AAD token via
-// DefaultAzureCredential injected per pi process through a pi `!command` apiKey).
+// DefaultAzureCredential minted per turn by the pi adapter).
 const modelAuth = (process.env.OF_MODEL_AUTH ?? "apikey").trim().toLowerCase() === "managed-identity"
   ? "managed-identity"
   : "apikey";
@@ -76,17 +74,11 @@ class HttpError extends Error {
   }
 }
 
-function parseArgs(value) {
-  return value.trim().length === 0 ? [] : value.trim().split(/\s+/);
-}
-
 function log(level, message, fields = {}) {
   console.log(JSON.stringify({ level, message, time: new Date().toISOString(), ...fields }));
 }
 
 const adapter = createAdapter(harness, {
-  piBin,
-  piArgs,
   piAgentDir,
   requestTimeoutMs,
   mock,
@@ -537,8 +529,6 @@ server.listen(port, host, () => {
     url: `http://${host}:${port}`,
     mode: mock ? "mock" : harness,
     harness,
-    piBin,
-    piArgs,
     workspaceDir,
     stateDir,
     sessionsDir,

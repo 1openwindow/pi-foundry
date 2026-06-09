@@ -18,8 +18,7 @@ ENV NODE_ENV=production \
     WORKSPACE_DIR=/workspace \
     STATE_DIR=/home/node/.open-foundry \
     SESSIONS_DIR=/home/node/.open-foundry/sessions \
-    PI_CODING_AGENT_DIR=/home/node/.open-foundry/pi-agent \
-    PI_ARGS="--mode rpc --no-session"
+    PI_CODING_AGENT_DIR=/home/node/.open-foundry/pi-agent
 
 # Pure Node runtime: a single Node process serves /readiness and POST /invocations.
 RUN apt-get update \
@@ -45,15 +44,10 @@ EXPOSE 8088
 CMD ["node", "/app/src/backend.mjs"]
 
 # --- pi harness -------------------------------------------------------------
-# pi-coding-agent is a global CLI spawned over JSON-RPC. The global install runs
-# as root and populates the default cache (/home/node/.npm) with root-owned
-# files; hand it back to node so nothing downstream hits EACCES.
+# pi-coding-agent SDK runtime, imported in-process by src/adapters/pi-sdk.mjs.
 FROM base AS pi
 ENV HARNESS=pi
-USER root
-RUN npm install -g @earendil-works/pi-coding-agent@0.76.0 --ignore-scripts \
-    && chown -R node:node /home/node/.npm
-USER node
+RUN npm install --no-save @earendil-works/pi-coding-agent@0.76.0 --ignore-scripts
 
 # --- copilot harness --------------------------------------------------------
 # Copilot SDK / CLI runtime, loaded lazily by src/adapters/copilot-sdk.mjs.

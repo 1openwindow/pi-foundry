@@ -18,7 +18,7 @@
 //   --azure-subscription-id <id>
 //   --azure-tenant-id <id>
 //   --azure-location <region>
-//   --model <model>                          Sets OF_OPENAI_MODEL and reconstructs PI_ARGS.
+//   --model <model>                          Sets OF_OPENAI_MODEL.
 //   --base-url <url>                         Sets OF_OPENAI_BASE_URL.
 //   --api-key-env <ENV_VAR_NAME>             Reads OF_OPENAI_API_KEY from process env (never via flag).
 //   --model-auth <apikey|managed-identity>   Sets OF_MODEL_AUTH. Default apikey. managed-identity is keyless
@@ -94,7 +94,6 @@ azdSet("ENABLE_DIAGNOSTICS", prefer(fileValues.ENABLE_DIAGNOSTICS, "0"));
 const model = prefer(args.model, fileValues.OF_OPENAI_MODEL);
 if (model) {
   azdSet("OF_OPENAI_MODEL", model);
-  azdSet("PI_ARGS", prefer(fileValues.PI_ARGS, `--mode rpc --no-session --provider foundry --model ${model}`));
 }
 azdSet("OF_OPENAI_BASE_URL", prefer(args["base-url"], fileValues.OF_OPENAI_BASE_URL));
 
@@ -196,8 +195,8 @@ async function deriveProjectId(subscriptionId, endpoint) {
 
 function azdSet(name, value) {
   if (value === undefined || value === "") return;
-  // KEY=value form prevents azd from parsing values that begin with -- (e.g. PI_ARGS)
-  // or contain shell-sensitive characters (e.g. $web).
+  // KEY=value form prevents azd from parsing values that begin with -- or
+  // contain shell-sensitive characters (e.g. $web).
   run("azd", ["env", "set", `${name}=${String(value)}`], { quiet: true });
   console.log(`set ${name}${isSecretName(name) ? "=<redacted>" : `=${value}`}`);
 }

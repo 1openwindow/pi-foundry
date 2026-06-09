@@ -66,8 +66,7 @@ export const contract = {
     requiredWhenLiveKeyless: ["OF_OPENAI_BASE_URL", "OF_OPENAI_MODEL"],
     // Optional runtime knobs with their defaults / accepted shapes.
     runtime: [
-      { name: "HARNESS", default: "pi", accepts: ["pi", "copilot", "codex"], note: "Agent harness. copilot drives GitHub Copilot via @github/copilot-sdk; codex drives OpenAI Codex via @openai/codex-sdk. Both reach the model through BYOK (apikey only)." },
-      { name: "PI_ARGS", default: "--mode rpc --no-session", note: "Append --provider foundry --model <model> when using OF_OPENAI_*." },
+      { name: "HARNESS", default: "pi", accepts: ["pi", "copilot", "codex"], note: "Agent harness. pi drives pi-coding-agent via its in-process SDK; copilot drives GitHub Copilot via @github/copilot-sdk; codex drives OpenAI Codex via @openai/codex-sdk. copilot/codex reach the model through BYOK (apikey only)." },
       { name: "OF_MOCK", default: "0", accepts: ["0", "1", "true", "false"] },
       { name: "OF_MODEL_AUTH", default: "apikey", accepts: ["apikey", "managed-identity"], note: "managed-identity mints AAD bearer tokens via DefaultAzureCredential; no OF_OPENAI_API_KEY needed. Not supported on API-key-only harnesses (copilot, codex)." },
       { name: "FOUNDRY_TOKEN_SCOPE", default: "https://cognitiveservices.azure.com/.default", note: "AAD scope used when OF_MODEL_AUTH=managed-identity." },

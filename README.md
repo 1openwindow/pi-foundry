@@ -57,8 +57,9 @@ In any agent session inside your repo, ask:
 > Deploy this agent to Foundry.
 
 The skill confirms agent name + runtime image, then runs the four primitives
-below. Run them by hand if you prefer. The example uses the Pi runtime image;
-use `ghcp-foundry-runtime:<tag>` instead for GitHub Copilot.
+below. Run them by hand if you prefer. The example uses the Pi runtime image
+(the default); swap in `ghcp-foundry-runtime:<tag>` or `codex-foundry-runtime:<tag>`
+for GitHub Copilot or OpenAI Codex.
 
 ```bash
 SKILL=path/to/open-foundry/.agents/skills/open-foundry
@@ -89,7 +90,7 @@ deployment. The only suggested default is the public Pi runtime image above.
 
 ### GitHub Copilot Runtime
 
-To run the same Hosted Agent bridge with GitHub Copilot instead of Pi, bootstrap
+To run the same Hosted Agent bridge with GitHub Copilot instead of the Pi example above, bootstrap
 with a `ghcp-foundry-runtime` image:
 
 ```bash
@@ -108,7 +109,7 @@ BYOK is API-key only. There is no separate `HARNESS` setting in `azd` or
 
 ### OpenAI Codex Runtime
 
-To run the same Hosted Agent bridge with OpenAI Codex instead of Pi, bootstrap
+To run the same Hosted Agent bridge with OpenAI Codex instead of the Pi example above, bootstrap
 with a `codex-foundry-runtime` image:
 
 ```bash
@@ -141,7 +142,6 @@ from it via `npm run emit:contract`.
 | Variable | Required when | Notes |
 |---|---|---|
 | `OF_OPENAI_API_KEY` / `OF_OPENAI_BASE_URL` / `OF_OPENAI_MODEL` | live (`OF_MOCK!=1`) | OpenAI-compatible triple |
-| `PI_ARGS` | optional | defaults to `--mode rpc --no-session`; skill adds `--provider foundry --model <model>` |
 | `OF_MOCK` | optional | `1` = run without a real model (smoke) |
 | `OF_MODEL_AUTH` | optional | `apikey` (default) or `managed-identity` (keyless); apikey-only on the copilot and codex harnesses |
 | `HARNESS` | baked into runtime image | `pi`, `copilot`, or `codex`; do not set in `azd` env for normal deployments |

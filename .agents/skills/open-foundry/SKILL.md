@@ -1,15 +1,15 @@
 ---
 name: open-foundry
-description: Helps a user deploy their existing Pi agent repo to Microsoft Foundry Hosted Agents via a thin azd-compatible layout. Use when the user wants to add Foundry deployment to a local Pi agent repo, configure azd/PI_* settings, deploy with azd deploy, verify remote invocations, or debug deployment, session, and streaming issues.
+description: Helps a user deploy their existing coding-agent repo (pi, GitHub Copilot, or OpenAI Codex) to Microsoft Foundry Hosted Agents via a thin azd-compatible layout. Use when the user wants to add Foundry deployment to a local coding-agent repo, configure azd env settings, deploy with azd deploy, verify remote invocations, or debug deployment, session, and streaming issues.
 ---
 
-# Deploy a Pi Agent to Foundry
+# Deploy a Coding Agent to Foundry
 
-You are the UX over the **open-foundry runtime image**. The runtime image owns the Foundry Invocations bridge, Pi RPC lifecycle, sessions, and streaming. Your job is to get the user from "I have a Pi agent repo" to "it runs on Foundry" with the minimum possible footprint in their repo.
+You are the UX over the **open-foundry runtime image**. The runtime image owns the Foundry Invocations bridge, the in-process harness lifecycle (pi, GitHub Copilot, or OpenAI Codex), sessions, and streaming. Your job is to get the user from "I have a coding-agent repo" to "it runs on Foundry" with the minimum possible footprint in their repo.
 
 The user should be able to say things like:
 
-- "Deploy this Pi agent to Foundry."
+- "Deploy this agent to Foundry."
 - "Add Foundry deployment to my current repo."
 - "Why did azd up fail?"
 
@@ -30,7 +30,7 @@ Confirm these before bootstrapping; if missing, tell the user exactly what to in
 Three layers. Keep them separate; don't blur them.
 
 ```
-User-owned Pi agent repo
+User-owned coding-agent repo
   .agents/skills/ , prompts/ , MCP config , workspace files
         |
         v
@@ -39,7 +39,7 @@ Five thin standard files (this skill bootstraps them):
         |
         v
 Versioned open-foundry runtime image (the contract product)
-  Foundry Invocations host + Pi RPC backend + sessions
+  Foundry Invocations host + in-process harness backend (pi / Copilot / Codex) + sessions
         |
         v
 Microsoft Foundry Hosted Agents
@@ -81,7 +81,7 @@ Rules:
 ## First steps every time
 
 1. Identify the current directory:
-   - **User Pi agent repo**: has `.agents/skills/` (with skills other than `open-foundry`), `prompts/`, `mcp.config.json`, or similar.
+   - **User coding-agent repo**: has `.agents/skills/` (with skills other than `open-foundry`), `prompts/`, `mcp.config.json`, or similar.
    - **Already bootstrapped repo**: has `agent.yaml` with `kind: hosted` and open-foundry-style env vars.
    - **open-foundry development checkout**: has `Dockerfile.runtime` and `.agents/skills/open-foundry/SKILL.md`. **Do not bootstrap here.**
 2. Determine the harness from the **runtime image** — never from repo structure:
@@ -97,7 +97,7 @@ Ask the user only for what you can't infer:
 
 - **Agent name** — default to a sanitized version of the repo directory name. Lowercase a-z/0-9/hyphen, 3-64 chars.
 - **Runtime image** — this is also the **harness selector**: the image is named `<harness>-foundry-runtime`, so its prefix picks the harness (prefix⇒harness mappings live in the contract `harnesses` table). Default to pi unless the user asks for Copilot or Codex. Offer the chosen harness's `runtimeImage` from the contract — it works out of the box and the user can accept it as-is (currently `ghcr.io/1openwindow/pi-foundry-runtime:0.1` for pi, `ghcr.io/1openwindow/ghcp-foundry-runtime:0.1` for Copilot, `ghcr.io/1openwindow/codex-foundry-runtime:0.1` for Codex); never ask them to supply a registry or tag. Advanced: pin an exact version or provide your own like `<acr>.azurecr.io/<harness>-foundry-runtime:<tag>`; see [docs/runtime-image.md](https://github.com/1openwindow/open-foundry/blob/main/docs/runtime-image.md) for how to build/publish one.
-- **Model** — `OF_OPENAI_MODEL`, e.g. `gpt-4.1-mini`. Default `PI_ARGS` is built from it.
+- **Model** — `OF_OPENAI_MODEL`, e.g. `gpt-4.1-mini`.
 - **OpenAI-compatible endpoint** — `OF_OPENAI_BASE_URL`, usually `https://<account>.cognitiveservices.azure.com/openai/v1`.
 - **Foundry project + subscription** — `FOUNDRY_PROJECT_ENDPOINT` (e.g. `https://<account>.services.ai.azure.com/api/projects/<project>`), `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`. `configure-env.mjs` derives `AZURE_AI_PROJECT_ID` (the project's ARM resource id, required by `azd deploy`) and `AZURE_TENANT_ID` from these automatically; if derivation fails it prints how to pass them explicitly.
 - **Container registry** — `AZURE_CONTAINER_REGISTRY_ENDPOINT` (`<acr>.azurecr.io`) for the remote build. Take the endpoint of an ACR the project can pull from; the skill doesn't create or wire it.
@@ -138,7 +138,7 @@ It validates `--cpu`/`--memory` against `contract.json`'s `resourceTiers`. Allow
 
 `configure-env.mjs` is a thin wrapper around `azd env set` with three properties:
 
-- Uses `KEY=value` form so values like `--mode rpc ...` and `$web` aren't reparsed by azd.
+- Uses `KEY=value` form so values that begin with `--` or contain shell-sensitive characters (e.g. `$web`) aren't reparsed by azd.
 - Refuses to print secrets; logs them as `<redacted>`.
 - When `--from-env-file <path>` is given, strips reserved `AGENT_*`/`FOUNDRY_*` (except `FOUNDRY_PROJECT_ENDPOINT`), so values copied from another agent's `.env` don't cross-contaminate.
 
@@ -160,29 +160,31 @@ node <skill>/scripts/grant-model-access.mjs
 
 It resolves the agent's Instance Identity Principal ID from `azd ai agent show`, the model account scope from `AZURE_AI_PROJECT_ID`, and grants `Cognitive Services OpenAI User` via ARM REST (no `az` CLI needed; idempotent). Then redeploy so the new revision picks up keyless auth. Use `--dry-run` to preview the principal/scope/role first. The Instance Identity is stable across versions, so this is a one-time grant per agent.
 
-### GitHub Copilot harness
+### Harness selection
 
-The harness is fixed by the runtime image — there is no `HARNESS` knob to set. To run on
-GitHub Copilot instead of pi, bootstrap with a `ghcp-foundry-runtime` image (the
-`pi-foundry-runtime` image has no Copilot, and vice versa); everything else is identical.
-The same pattern holds for any harness in the contract `harnesses` table — pick its
-`<harness>-foundry-runtime` image.
+The harness is fixed by the **runtime image** — there is no `HARNESS` knob to set. Each harness
+ships as its own `<harness>-foundry-runtime` image (a `pi-foundry-runtime` image has no Copilot or
+Codex, and vice versa); pick the one you want at bootstrap and everything else is identical:
 
 ```text
-node <skill>/scripts/bootstrap.mjs --agent-name <name> --runtime-image <acr>/ghcp-foundry-runtime:<tag>
+node <skill>/scripts/bootstrap.mjs --agent-name <name> --runtime-image <acr>/<harness>-foundry-runtime:<tag>
 node <skill>/scripts/configure-env.mjs --env-name <env> --agent-name <name> \
   --model <model> --base-url <url>
 ```
 
-Copilot BYOK is API-key only, so `--model-auth managed-identity` is rejected — `configure-env.mjs`
-catches it locally (by reading the runtime image from `./Dockerfile`) and the runtime rejects it at
-startup as a backstop. The verified `COPILOT_*` defaults need no flags; override them in `agent.yaml`
-+ `agent.manifest.yaml` if needed.
+The harnesses differ only in two **data-driven** ways, both read from the contract `harnesses`
+table — no harness names are hardcoded in the scripts or runtime:
 
-The OpenAI Codex harness (`codex-foundry-runtime`, `@openai/codex-sdk`) is identical in shape: BYOK
-API-key only (managed-identity rejected the same way), with verified `CODEX_*` defaults instead of
-`COPILOT_*`. The apikey-only constraint is data-driven — `configure-env.mjs` and the runtime read each
-harness's `modelAuth` from the contract `harnesses` table, so no harness names are hardcoded.
+- **Driver** — pi runs pi-coding-agent via its in-process SDK; copilot runs `@github/copilot-sdk`;
+  codex runs `@openai/codex-sdk`.
+- **Model auth** — pi supports both `apikey` and keyless `managed-identity`. Copilot and Codex are
+  BYOK **apikey-only**, so `--model-auth managed-identity` is rejected: `configure-env.mjs` catches
+  it locally (by reading the runtime image from `./Dockerfile`) and the runtime rejects it at startup
+  as a backstop.
+
+Copilot and Codex ship verified provider defaults (`COPILOT_*` / `CODEX_*`) that need no flags —
+override them in `agent.yaml` + `agent.manifest.yaml` if needed; pi builds its `foundry` provider
+from `OF_OPENAI_BASE_URL` + `OF_OPENAI_MODEL`.
 
 ### Verify
 
